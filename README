@@ -20,6 +20,11 @@ KVSystem was written by FoOTOo Lab. You can contact the author by e-mail to:
 
 Thanks.
 
+Q&A:
+1.How to compile this lib?
+./src$ sudo make all
+
+
 
 
 == END OF FILE ==

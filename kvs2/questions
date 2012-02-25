@@ -1,0 +1,3 @@
+1. struct KVS  not contains put/get/ or others for , when do put(), put funciton itself doesn't know struct KVS
+
+
