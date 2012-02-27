@@ -1,117 +1,270 @@
-/*============================================================================
-# Author: Wade Leng
-# E-mail: wade.hit@gmail.com
-# Last modified:	2012-02-04 16:59
-# Filename:		index.c
-# Description: this is index
-============================================================================*/
 #include <stdio.h>
 #include <errno.h>
 
 #include "index.h"
-#include "layout.h"
-#include "type.h"
-#include "log.h"
 
-typedef struct IDX_NODE 
+static INDEX_HEAD_LAYOUT _indexhead_create(unsigned long long key_num_quotas, unsigned long long timestamp)
 {
-	IDX_VALUE_INFO			value_node;
-	PTR_KW					left_id, right_id;
-	HASH					hash_2, hash_3;
-}IDX_NODE;
+    INDEX_HEAD_LAYOUT indexhead;
+    indexhead.magic_num = 1806;
+    indexhead.version = 0;
+    indexhead.cur_kv_count = 0;
+    indexhead.node_pool_size = key_num_quotas;
+    indexhead.hash_head = THIS_IS_HASH_HEAD_NUM;
+    indexhead.free_node_pool_size = THIS_IS_FREE_NODE_POOL_SIZE;
+    indexhead.free_node_count = 0;
+    indexhead.timestamp = timestamp;
+    return indexhead;
+};
 
-extern	FILE*		log_file;
-static	PTR_KW*		ht_table = NULL;  
-static	IDX_NODE* 	idx_nodes = NULL;
-static	PTR_KW*		free_idx_nodes_stack = NULL;
-static	PTR_KW*		free_idx_nodes_top;
-
-static	HASH	hash_func_1(const char* key, int key_size);
-static	HASH	hash_func_2(const char* key, int key_size);
-static	HASH	hash_func_3(const char* key, int key_size);
-
-static	int		_is_hash_same(HASH hash_x2, HASH hash_x3, HASH hash_y2, HASH hash_y3);
-static	int		_get_free_idx_node();
-static	void	_put_free_idx_node(int node_id);
-
-int idx_init(const char* image, INIT_TYPE init_type)
+int index_head_sync(INDEX* index)
 {
-	int i;
-	PTR_KW j;
+    int ret = err_success;
 
-	ht_table = (PTR_KW*)(image + IMAGE_HT_TABLE);
-	idx_nodes = (IDX_NODE*)(image + IMAGE_IDX_NODES);
-	free_idx_nodes_stack = (PTR_KW*)(image + IMAGE_FREE_IDX_NODES);
-	free_idx_nodes_top = (PTR_KW*) (image + IMAGE_FREE_IDX_NODES_HORIZON);
+    INDEX_HEAD_LAYOUT indexhead = _indexhead_fetch(index);
 
-	if (init_type == INIT_TYPE_CREATE)
-	{
-		for (i = 0; i < IDX_HT_TABLE_SIZE; i++)
-			ht_table[i] = IDX_NODE_NULL;
-		for (j = 0; j < IDX_NODES_MAX; j++)
-			free_idx_nodes_stack[j] = j;
-		*free_idx_nodes_top = IDX_NODES_MAX - 1;
-	}
-	else if (init_type == INIT_TYPE_LOAD)
-	{
-		for (i = 0; i < IDX_NODES_MAX; i++)	
-			idx_nodes[i].value_node.buf_ptr = BUF_PTR_NULL;
-	}
-
-	log_err(__FILE__, __LINE__, log_file, "INDEX INIT SUCCESS.");
-	return 0;
+	ret = lseek(index->fd, 0, SEEK_SET);
+    if (ret < 0) {
+        return -1;
+    }
+    
+    write(index->fd, &indexhead, sizeof(indexhead));
+    write(index->fd, index->node_pool, 
+            index->node_pool_size * sizeof(*(index->node_pool)) );
+    write(index->fd, index->hash_head, 
+            index->hashhead_size * sizeof(*(index->hash_head)) );
+    write(index->fd, index->free_node_pool, 
+            index->free_node_pool_size * sizeof(*(index->free_node_pool)) );
+    return 0;
 }
 
-int idx_insert(const char* key, int key_size, IDX_VALUE_INFO** insert_node_ptr)
+static INDEX_HEAD_LAYOUT _indexhead_fetch(INDEX* index)
 {
-	int ht_table_id, node_id, new_node_id, cmp;
-	HASH cur_hash_2, cur_hash_3;
-	PTR_KW*	pre_node_ptr;
+    INDEX_HEAD_LAYOUT indexhead;
+    indexhead.magic_num = 1806;
+    indexhead.version = 0;
+    indexhead.cur_kv_count = index->cur_kv_count;
+    indexhead.node_pool_size = index->node_pool_size;
+    indexhead.hash_head = index->hashhead_size;
+    indexhead.free_node_pool_size = index->free_node_pool_size;
+    indexhead.free_node_count = index->free_node_count;
+    indexhead.timestamp = index->timestamp;
+    return indexhead;
+}
 
-	cur_hash_2 = hash_func_2(key, key_size);
-	cur_hash_3 = hash_func_3(key, key_size);
+static INDEX_HEAD_LAYOUT _indexhead_read(int fd)
+{
+    INDEX_HEAD_LAYOUT indexhead;
+    lseek(fd, 0, SEEK_SET);
+    read(fd, &indexhead, sizeof(indexhead));
+    return indexhead;
+}
+
+INDEX* idx_create(const char *filename, unsigned long long key_num_quotas)
+{
+    INDEX* index = NULL;
+    int fd = -1;
+
+	fd = open(filename, O_RDWR | O_LARGEFILE | O_CREAT , S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP); 
+	if (fd <= 0) 
+	{
+        printf ("open [%s] failed.\n");
+        goto OUT;
+	}
+
+    unsigned long long timestamp = _kv_consequence_id(); 
+    INDEX_HEAD_LAYOUT indexhead = _indexhead_create(key_num_quotas, timestamp);
+
+    index = (INDEX*) malloc(sizeof(INDEX)); 
+    if (NULL == index) {
+        goto OUT;
+    }
+
+    index->fd = fd;
+    index->is_change = 0;
+    index->cur_kv_count = indexhead.cur_kv_count;
+    index->hashhead_size = indexhead.hash_head;
+    index->hash_head = (unsigned long long*) malloc(sizeof(*hash_head) * indexhead.hash_head);
+    for (i = 0; i< index->hashhead_size; i++) {
+        index->hash_head[i] = INDEX_NODE_NOT_EXIST;
+    }
+    index->node_pool_size = indexhead.node_pool_size;
+    index->node_pool = (IDX_NODE*) malloc(sizeof(*node_pool) * indexhead.node_pool_size);
+    for (i = 0; i < index->node_pool_size; i++) {
+        index->node_pool[i] = INDEX_NODE_NOT_EXIST;
+    }
+    index->free_node_pool_size = indexhead.free_node_pool_size;
+    index->free_node_count = indexhead.free_node_count;
+    index->free_node_pool = (unsigned long long*) malloc(sizeof(*(index->free_node_pool) * indexhead.free_node_pool_size));
+    index->timestamp = indexhead.timestamp;
+    
+    ret = index_head_sync(index);
+    if (err_success != ret) {
+        goto OUT;
+    }
+
+    return index;
+
+OUT:
+    if (NULL != index->hash_head) {
+        free(index->hash_head);
+        index->hash_head = NULL;
+    }
+    if (NULL != index->free_node_pool) {
+        free(index->free_node_pool);
+        index->free_node_pool = NULL;
+    }
+    if (NULL != index->node_pool) {
+        free(index->node_pool);
+        index->node_pool = NULL;
+    }
+
+    if (NULL != index) {
+        free(index);
+        index= NULL;
+    }
+
+    return NULL;
+}
+
+INDEX* idx_load(const char *filename)
+{
+    INDEX* index = NULL;
+    int fd = -1;
+
+	fd = open(filename, O_RDWR | O_LARGEFILE, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP); 
+	if (fd <= 0) {
+        printf ("load [%s] failed.\n");
+        goto OUT;
+	}
+
+    INDEX_HEAD_LAYOUT indexhead = _indexhead_read(fd);
+
+    index = (INDEX*) malloc(sizeof(INDEX)); 
+    if (NULL == index) {
+        goto OUT;
+    }
+
+    index->fd = fd;
+    index->is_change = 0;
+    index->cur_kv_count = indexhead.cur_kv_count;
+    index->hashhead_size = indexhead.hash_head;
+    index->hash_head = (unsigned long long*) malloc(sizeof(*hash_head) * indexhead.hash_head);
+    index->node_pool_size = indexhead.node_pool_size;
+    index->node_pool = (IDX_NODE*) malloc(sizeof(*node_pool) * indexhead.node_pool_size);
+    index->free_node_pool_size = indexhead.free_node_pool_size;
+    index->free_node_count = indexhead.free_node_count;
+    index->free_node_pool = (unsigned long long*) malloc(sizeof(*(index->free_node_pool) * indexhead.free_node_pool_size));
+    index->timestamp = indexhead.timestamp;
+
+    lseek(index->fd, sizeof(INDEX_HEAD_LAYOUT), SEEK_SET);
+    read(index->fd, index->node_pool,
+            index->node_pool_size * sizeof(*(index->node_pool)) );
+    read(index->fd, index->hash_head,
+            index->hashhead_size * sizeof(*(index->hash_head)) );
+    read(index->fd, index->free_node_pool,
+            index->free_node_pool_size * sizeof(*(index->free_node_pool)) );
+    
+    return index;
+
+OUT:
+    if (NULL != index->hash_head) {
+        free(index->hash_head);
+        index->hash_head = NULL;
+    }
+    if (NULL != index->free_node_pool) {
+        free(index->free_node_pool);
+        index->free_node_pool = NULL;
+    }
+    if (NULL != index->node_pool) {
+        free(index->node_pool);
+        index->node_pool = NULL;
+    }
+    
+    if (NULL != index) {
+        free(index);
+        index = NULL;
+    }
+
+    return NULL;
+}
+
+
+
+
+int idx_insert(INDEX* idx, const IDX_NODE* node, unsigned long long timestamp);
+{
+	unsigned long long ht_table_id; 
+    unsigned long long node_id, new_node_id;
+    int cmp = 0;
+	unsigned long long*	pre_node_ptr;
+
+    int ht_table_id = _get_hashhead_id(node->key_sign);
 	
-	ht_table_id = hash_func_1(key, key_size) % IDX_HT_TABLE_SIZE; 
-	pre_node_ptr = &ht_table[ht_table_id];
+	pre_node_ptr = &idx->hash_head[ht_table_id];
 	node_id = ht_table[ht_table_id];
 
-	while (node_id != IDX_NODE_NULL)
+	while (node_id != INDEX_NODE_NOT_EXIST)
 	{
-		cmp = _is_hash_same(idx_nodes[node_id].hash_2, idx_nodes[node_id].hash_3, cur_hash_2, cur_hash_3);
+		cmp = _is_hash_same(idx->node_pool[node_id], node->key_sign);
 		if (cmp == 0) 
 		{
-			log_err(__FILE__, __LINE__, log_file, "idx_insert---key already exist.");
+            printf ("key already exist");
 			return -1;
 		} else if (cmp < 0) 
 		{
-			pre_node_ptr = &(idx_nodes[node_id].left_id);
-			node_id = idx_nodes[node_id].left_id;
+			pre_node_ptr = &(idx->node_pool[node_id].left_id);
+			node_id = idx->node_pool[node_id].left_id;
 		} else 
 		{
-			pre_node_ptr = &(idx_nodes[node_id].right_id);
-			node_id = idx_nodes[node_id].right_id;
+			pre_node_ptr = &(idx->node_pool[node_id].right_id);
+			node_id = idx->node_pool[node_id].right_id;
 		}
 	}
 
-	new_node_id = _get_free_idx_node();
+	new_node_id = _get_free_idx_node(idx);
 	if (new_node_id == -1)
 	{
-		log_err(__FILE__, __LINE__, log_file, "idx_insert---_get_free_idx_node fail.");
+        printf ("no free idx node\n");
 		return -1;
 	}
-	idx_nodes[new_node_id].hash_2 = cur_hash_2;
-	idx_nodes[new_node_id].hash_3 = cur_hash_3;
-	idx_nodes[new_node_id].left_id = idx_nodes[new_node_id].right_id = IDX_NODE_NULL;
+	idx->node_pool[new_node_id].key_sign = node->key_sign;
+    idx->node_pool[new_node_id].value_offset = node->value_offset;
+	idx->node_pool[new_node_id].left_id = INDEX_NODE_NOT_EXIST;
+    idx->node_pool[new_node_id].right_id = INDEX_NODE_NOT_EXIST;
 	*pre_node_ptr = new_node_id;	
-	*insert_node_ptr = (IDX_VALUE_INFO*) &(idx_nodes[new_node_id].value_node);
 
+    idx->timestamp = timestamp;
 	return 0;
 }
 
-int idx_search(const char* key, int key_size, IDX_VALUE_INFO** search_node)
+typedef struct INDEX {
+    FILE* fd;
+	int is_change;
+    int cur_kv_count;
+
+	unsigned long long hashhead_size;
+	unsigned long long* hash_head;
+
+	/*this is max_key_num*/
+	unsigned long long node_pool_size; 
+	IDX_NODE* node_pool;
+
+    unsigned long long free_node_pool_size;
+	unsigned long long free_node_count;
+	unsigned long long* free_node_pool;
+
+    unsigned long long timestamp;
+} INDEX;
+
+
+int idx_search(INDEX* idx, IDX_NODE* node)
 {
-	HASH cur_hash_2, cur_hash_3;
-	int ht_table_id, node_id, cmp;
+	unsigned long long ht_table_id; 
+    unsigned long long node_id, new_node_id;
+    int cmp = 0;
+	unsigned long long*	pre_node_ptr;
+    int ht_table_id = _get_hashhead_id(node->key_sign);
 
 	(*search_node)->buf_ptr = BUF_PTR_NULL;
 	(*search_node)->disk_offset = DISK_OFFSET_NULL;
@@ -120,88 +273,101 @@ int idx_search(const char* key, int key_size, IDX_VALUE_INFO** search_node)
 	cur_hash_2 = hash_func_2(key, key_size);
 	cur_hash_3 = hash_func_3(key, key_size);
 
-	ht_table_id = hash_func_1(key, key_size) % IDX_HT_TABLE_SIZE;
 	node_id = ht_table[ht_table_id];
 
-	while(node_id != IDX_NODE_NULL)
+	while(node_id != INDEX_NODE_NOT_EXIST)
 	{	
-		cmp = _is_hash_same(idx_nodes[node_id].hash_2, idx_nodes[node_id].hash_3, cur_hash_2, cur_hash_3);
+		cmp = _is_hash_same(idx->node_pool[node_id].key_sign, node->key_sign);
 		if (cmp == 0) {
-			(*search_node)->value_size = idx_nodes[node_id].value_node.value_size;		
-			(*search_node)->buf_ptr = idx_nodes[node_id].value_node.buf_ptr;
-			(*search_node)->disk_offset = idx_nodes[node_id].value_node.disk_offset;
+            node->value_offset = idx->node_pool[node_id].value_offset;
 			return 0;
 		} else if (cmp < 0) {
-			node_id = idx_nodes[node_id].left_id;
+			node_id = idx->node_pool[node_id].left_id;
 		} else {
-			node_id = idx_nodes[node_id].right_id;
+			node_id = idx->node_pool[node_id].right_id;
 		}
 	}
 	
-	log_err(__FILE__, __LINE__, log_file, "idx_search---key not found.");
+    printf ("key not found.\n");
 	return -1;	
 }
 
-int idx_delete(const char* key, int key_size, IDX_VALUE_INFO* delete_node)
+typedef struct IDX_NODE 
 {
-	int ht_table_id, node_id, cmp, nearest_id;
-	HASH cur_hash_2, cur_hash_3;
-	PTR_KW* pre_node_ptr;
-	PTR_KW* nearest_pre_node_ptr;
+	IDX_VALUE_INFO			value_node;
+	PTR_KW					left_id, right_id;
+	HASH					hash_2, hash_3;
+}IDX_NODE;
+
+typedef struct IDX_NODE {
+    unsigned long long key_sign;
+    unsigned long long value_offset;
+    unsigned long long left_id;
+    unsigned long long right_id;
+}
+int idx_delete(const char* key, int key_size, IDX_VALUE_INFO* delete_node)
+int idx_delete(INDEX* idx, const IDX_NODE* node, unsigned long long timestamp)
+{
+	unsigned long long node_id, nearest_id;
+    int cmp;
+	unsigned long long* pre_node_ptr = NULL;
+	unsigned long long* nearest_pre_node_ptr = NULL;
 	
-	cur_hash_2 = hash_func_2(key, key_size);
-	cur_hash_3 = hash_func_3(key, key_size);
-	
-	ht_table_id = hash_func_1(key, key_size) % IDX_HT_TABLE_SIZE; 
+	int ht_table_id = _get_hashhead_id(node->key_sign); 
 	pre_node_ptr = &ht_table[ht_table_id];
 	node_id = ht_table[ht_table_id];
 
 	while ( 1 )
 	{
-		if (node_id == IDX_NODE_NULL)
+		if (node_id == INDEX_NODE_NOT_EXIST)
 		{
-			log_err(__FILE__, __LINE__, log_file, "idx_delete---key not found.");
+            printf ("delete key not found");
 			return -1;
 		}
 
-		cmp = _is_hash_same(idx_nodes[node_id].hash_2, idx_nodes[node_id].hash_3, cur_hash_2, cur_hash_3);
+		cmp = _is_hash_same(idx->node_pool[node_id].key_sign, node->key_sign);
 		if (cmp == 0) {
 			break;
 		} else if (cmp < 0) {
-			pre_node_ptr = &idx_nodes[node_id].left_id;
-			node_id = idx_nodes[node_id].left_id;
+			pre_node_ptr = &(idx->node_pool[node_id].left_id);
+			node_id = &(idx->node_pool[node_id].left_id);
 		} else {
-			pre_node_ptr = &idx_nodes[node_id].right_id;
-			node_id = idx_nodes[node_id].right_id;
+			pre_node_ptr = &(idx->node_pool[node_id].right_id);
+			node_id = &(idx->node_pool[node_id].right_id);
 		}
 	}
 
+/*
 	delete_node->buf_ptr = idx_nodes[node_id].value_node.buf_ptr;
 	delete_node->disk_offset = idx_nodes[node_id].value_node.disk_offset;
 	delete_node->value_size = idx_nodes[node_id].value_node.value_size;
+*/
 
-	if (idx_nodes[node_id].left_id == IDX_NODE_NULL && idx_nodes[node_id].right_id == IDX_NODE_NULL) {
-		*pre_node_ptr = IDX_NODE_NULL;
-	} else if (idx_nodes[node_id].left_id != IDX_NODE_NULL && idx_nodes[node_id].right_id != IDX_NODE_NULL) {
-		nearest_pre_node_ptr = &idx_nodes[node_id].right_id;
-		nearest_id = idx_nodes[node_id].right_id;
-		while (idx_nodes[nearest_id].left_id != IDX_NODE_NULL) {
-			nearest_pre_node_ptr = &idx_nodes[nearest_id].left_id;
-			nearest_id = idx_nodes[nearest_id].left_id;
+	if (idx->node_pool[node_id].left_id == INDEX_NODE_NOT_EXIST
+        && idx->node_pool[node_id].right_id == INDEX_NODE_NOT_EXIST) {
+		*pre_node_ptr = INDEX_NODE_NOT_EXIST;
+	} else if (idx->node_pool[node_id].left_id != INDEX_NODE_NOT_EXIST
+        && idx->node_pool[node_id].right_id != INDEX_NODE_NOT_EXIST) {
+		nearest_pre_node_ptr = &(idx->node_pool[node_id].right_id);
+		nearest_id = idx->node_pool[node_id].right_id;
+		while (idx->node_pool[nearest_id].left_id != INDEX_NODE_NOT_EXIST) {
+			nearest_pre_node_ptr = &(idx->node_pool[nearest_id].left_id);
+			nearest_id = idx->node_pool[nearest_id].left_id;
 		}
 
-		*nearest_pre_node_ptr = idx_nodes[nearest_id].right_id;
-		idx_nodes[nearest_id].left_id = idx_nodes[node_id].left_id;
-		idx_nodes[nearest_id].right_id = idx_nodes[node_id].right_id;
+		*nearest_pre_node_ptr = idx->node_pool[nearest_id].right_id;
+		idx->node_pool[nearest_id].left_id = idx->node_pool[node_id].left_id;
+		idx->node_pool[nearest_id].right_id = idx->node_pool[node_id].right_id;
 		*pre_node_ptr = nearest_id;
-	} else if (idx_nodes[node_id].left_id != IDX_NODE_NULL) {
-		*pre_node_ptr = idx_nodes[node_id].left_id;		
+	} else if (idx->node_pool[node_id].left_id != INDEX_NODE_NOT_EXIST) {
+		*pre_node_ptr = idx->node_pool[node_id].left_id;		
 	} else {
-		*pre_node_ptr = idx_nodes[node_id].right_id;
+		*pre_node_ptr = idx->node_pool[node_id].right_id;
 	}
 
-	_put_free_idx_node(node_id);
+	_put_free_idx_node(idx, node_id);
 
+    idx->timestamp = timestamp;
 	return 0;
 }
 
@@ -213,68 +379,43 @@ int idx_exit()
 	return 0;
 }
 
-static HASH hash_func_1(const char* key, int key_size)
+
+static int _is_hash_same(unsigned long long a, unsigned long long b)
 {
-	unsigned int hash = 5381;
-	int i =0;
-	while (i < key_size) {
-		hash += (hash << 5) + *(key+i);
-		i++;
-	}
-	return (hash & 0x7FFFFFFF);
+    if (a == b) {
+        return 0;
+    }
+    if (a < b) {
+        return -1;
+    }
+    return 1;
 }
 
-static HASH hash_func_2(const char* key, int key_size)
+typedef struct INDEX {
+    FILE* fd;
+	int is_change;
+    int cur_kv_count;
+
+	unsigned long long hashhead_size;
+	unsigned long long* hash_head;
+
+	/*this is max_key_num*/
+	unsigned long long node_pool_size; 
+	IDX_NODE* node_pool;
+
+    unsigned long long free_node_pool_size;
+	unsigned long long free_node_count;
+	unsigned long long* free_node_pool;
+
+    unsigned long long timestamp;
+} INDEX;
+static unsigned long long _get_free_idx_node(INDEX *idx)
 {
-	int hash = 0, x = 0, i = 0;
-	while (i < key_size) {
-		hash = (hash << 4) + *(key+i);
-		if ((x = hash & 0xF0000000L) != 0) {
-			hash ^= (x >> 24);
-			hash &= ~x;
-		}
-		i++;
-	}
-	return hash;
+    /*TO DO if xx < 0 */
+	return idx->free_node_pool[(idx->free_node_count)--];
 }
 
-static HASH hash_func_3(const char* key, int key_size)
+static void _put_free_idx_node(INDEX* idx, unsigned long long node_id)
 {
-	int hash = 0, i;
- 
-	for (i=0; i < key_size; i++) {
-		if ((i & 1) == 0) {
-			hash ^= ((hash << 7) ^ (*(key+i)) ^ (hash >> 3));
-		} else {
-			hash ^= (~((hash << 11) ^ (*(key+i)) ^ (hash >> 5)));
-		}
-	}
-	return hash;
-}
-
-static int _is_hash_same(HASH hash_x2, HASH hash_x3, HASH hash_y2, HASH hash_y3)
-{
-	if (hash_y2 == hash_x2)
-	{
-		if (hash_y3 == hash_x3)
-			return 0;
-		if (hash_y3 < hash_x3)
-			return -1;
-		else return 1;
-	}
-	if (hash_y2 < hash_x2)
-		return -1;
-	return 1;
-}
-
-static int _get_free_idx_node()
-{
-	if (*free_idx_nodes_top < 0) 
-		return -1;
-	return free_idx_nodes_stack[(*free_idx_nodes_top)--];
-}
-
-static void _put_free_idx_node(int node_id)
-{
-	free_idx_nodes_stack[++(*free_idx_nodes_top)] = node_id;
+	idx->free_node_pool[++(idx->free_node_count)] = node_id;
 }

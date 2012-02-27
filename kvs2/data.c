@@ -151,12 +151,12 @@ int data_head_sync(DATA* data)
 
     DATA_HEAD_LAYOUT datahead = _datahead_fetch(data);
 
-	ret = lseek(fd, 0, SEEK_SET);
+	ret = lseek(data->fd, 0, SEEK_SET);
     if (ret < 0) {
         return -1;
     }
     
-    write(data->fd, &data_head, sizeof(datahead));
+    write(data->fd, &datahead, sizeof(datahead));
     return 0;
 }
 
