@@ -1,18 +1,17 @@
-#define	_FILE_OFFSET_BITS	64
-#define _LARGEFILE_SOURCE
-#define _LARGEFILE64_SOURCE
-
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <fcntl.h>
-
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
-#include <string.h>
 
 #include "data.h"
+#include "kvs_utils.h"
+#include "kvs_type.h"
+
+#define _LARGEFILE_SOURCE
+#define _LARGEFILE64_SOURCE
 
 typedef struct DATA_HEAD_LAYOUT {
     int magic_num;
@@ -30,57 +29,37 @@ typedef struct KV_ITEM_HEAD {
     unsigned long long timestamp;
     unsigned long long key_len;
     unsigned long long value_len;
-}
+} KV_ITEM_HEAD;
 
-static DATA_HEAD_LAYOUT _datahead_create()
+static DATA_HEAD_LAYOUT _datahead_create();
+static DATA_HEAD_LAYOUT _datahead_fetch(DATA* data);
+static int _datahead_read(int fd, DATA_HEAD_LAYOUT* datahead);
+
+int data_head_sync(DATA* data)
 {
-    DATA_HEAD_LAYOUT data_head;
-    data_head.magic_num = 1806;
-    data_head.version = 0;
-    data_head.kv_count = 0;
-    data_head.append_offset = sizeof(DATA_HEAD_LAYOUT);
-    data_head.timestamp = 0;
-    return data_head; 
-}
+    int ret = err_success;
 
-static DATA_HEAD_LAYOUT _datahead_fetch(DATA* data)
-{
-    DATA_HEAD_LAYOUT data_head;
-    data_head.magic_num = 1806;
-    data_head.version = 0;
-    data_head.kv_count = data->kv_count;
-    data_head.append_offset = data->append_offset;
-    data_head.timestamp = data->timestamp;
-    return data_head;
-}
+    DATA_HEAD_LAYOUT datahead = _datahead_fetch(data);
 
-static int _datahead_read(int fd, DATA_HEAD_LAYOUT* datahead)
-{
-    int ret = 0;
-
-	ret = lseek(fd, 0, SEEK_SET);
-    if (ret < 0) {
-        return -1;
-    
-    
-    ret = read(data->fd, datahead, sizeof(*datahead));
+	ret = lseek(data->fd, 0, SEEK_SET);
     if (ret < 0) {
         return -1;
     }
-    /*TODO: some check here, such as magic_num, version*/
     
-    return err_success;
+    write(data->fd, &datahead, sizeof(datahead));
+    return 0;
 }
 
 DATA* data_create(const char* filename)
 {
-    DATA* data = NULL;
     int fd = -1;
+    int ret = 0;
+    DATA* data = NULL;
 
-	fd = open(filename, O_RDWR | O_LARGEFILE | O_CREAT , S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP); 
+	fd = open(filename, O_RDWR | O_CREAT , S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP); 
 	if (fd <= 0) 
 	{
-        printf ("open [%s] failed.\n");
+        printf ("open [%s] failed.\n", filename);
         goto OUT;
 	}
 
@@ -113,17 +92,19 @@ OUT:
 
 DATA* data_load(const char* filename)
 {
-    DATA* data = NULL;
     int fd = -1;
+    int ret = 0;
+    DATA* data = NULL;
+    DATA_HEAD_LAYOUT datahead;
 
-	fd = open(filename, O_RDWR | O_LARGEFILE, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP); 
+	fd = open(filename, O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP); 
 	if (fd <= 0) 
 	{
-        printf ("load [%s] failed.\n");
+        printf ("load [%s] failed.\n", filename);
         goto OUT;
 	}
 
-    DATA_HEAD_LAYOUT datahead = _datahead_read(fd);
+    ret = _datahead_read(fd, &datahead);
 
     data = (DATA*) malloc(sizeof(DATA)); 
     if (NULL == data) {
@@ -145,45 +126,12 @@ OUT:
     return NULL;
 }
 
-int data_head_sync(DATA* data)
+int data_exit(DATA* data)
 {
     int ret = err_success;
-
-    DATA_HEAD_LAYOUT datahead = _datahead_fetch(data);
-
-	ret = lseek(data->fd, 0, SEEK_SET);
-    if (ret < 0) {
-        return -1;
-    }
-    
-    write(data->fd, &datahead, sizeof(datahead));
-    return 0;
-}
-
-int data_insert(DATA* data, unsigned long long value_offset, KV_PAIR* kv_pair)
-{
-    int ret = 0;
-    unsigned long long kv_item_size = 0;
-    KV_ITEM_HEAD kv_item_head;
-
-    kv_item_head.timestamp = kv_pair->timestamp;
-    kv_item_head.key_len = kv_pair->key_len;
-    kv_item_head.value_len = kv_pair->value_len;
-    
-    kv_item_size = sizeof(KV_PAIR_HEAD) + kv_pair->key_len + kv_pair->value_len;
-    
-	ret = lseek(data->fd, value_offset, SEEK_SET);
-    if (ret < 0) {
-        return -1;
-    }
-    ret = write(data->fd, &kv_item_head, sizeof(kv_item_head));
-    ret = write(data->fd, kv_pair->key, kv_pair->key_ken);
-    ret = write(data->fd, kv_pair->value, kv_pair->value_len);
-    data->append_offset += kv_item_size;
-    data->kv_count = data->kv_count + 1;
-    data->timestamp = kv_pair->timestamp;
-    
-    return 0;
+    data_head_sync(data);
+    close(data->fd);
+    return ret;
 }
 
 int data_get(DATA* data, unsigned long long value_offset, KV_PAIR* kv_pair) 
@@ -229,6 +177,32 @@ OUT:
     return ret;
 }
 
+int data_insert(DATA* data, unsigned long long value_offset, KV_PAIR* kv_pair)
+{
+    int ret = 0;
+    KV_ITEM_HEAD kv_item_head;
+    unsigned long long kv_item_size = 0;
+
+    kv_item_head.timestamp = kv_pair->timestamp;
+    kv_item_head.key_len = kv_pair->key_len;
+    kv_item_head.value_len = kv_pair->value_len;
+    
+    kv_item_size = sizeof(KV_ITEM_HEAD) + kv_pair->key_len + kv_pair->value_len;
+    
+	ret = lseek(data->fd, value_offset, SEEK_SET);
+    if (ret < 0) {
+        return -1;
+    }
+    ret = write(data->fd, &kv_item_head, sizeof(kv_item_head));
+    ret = write(data->fd, kv_pair->key, kv_pair->key_len);
+    ret = write(data->fd, kv_pair->value, kv_pair->value_len);
+    data->append_offset += kv_item_size;
+    data->kv_count = data->kv_count + 1;
+    data->timestamp = kv_pair->timestamp;
+    
+    return 0;
+}
+
 int data_delete(DATA* data, unsigned long long timestamp) 
 {
     data->kv_count = data->kv_count - 1;
@@ -236,3 +210,42 @@ int data_delete(DATA* data, unsigned long long timestamp)
     return err_success;
 }
 
+static DATA_HEAD_LAYOUT _datahead_create()
+{
+    DATA_HEAD_LAYOUT data_head;
+    data_head.magic_num = 1806;
+    data_head.version = 0;
+    data_head.kv_count = 0;
+    data_head.append_offset = sizeof(DATA_HEAD_LAYOUT);
+    data_head.timestamp = 0;
+    return data_head; 
+}
+
+static DATA_HEAD_LAYOUT _datahead_fetch(DATA* data)
+{
+    DATA_HEAD_LAYOUT data_head;
+    data_head.magic_num = 1806;
+    data_head.version = 0;
+    data_head.kv_count = data->kv_count;
+    data_head.append_offset = data->append_offset;
+    data_head.timestamp = data->timestamp;
+    return data_head;
+}
+
+static int _datahead_read(int fd, DATA_HEAD_LAYOUT* datahead)
+{
+    int ret = 0;
+
+	ret = lseek(fd, 0, SEEK_SET);
+    if (ret < 0) {
+        return -1;
+    }
+    
+    ret = read(fd, datahead, sizeof(*datahead));
+    if (ret < 0) {
+        return -1;
+    }
+    /*TODO: some check here, such as magic_num, version*/
+    
+    return err_success;
+}

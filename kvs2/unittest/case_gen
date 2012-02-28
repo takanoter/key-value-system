@@ -1,0 +1,3 @@
+#!/bin/sh
+gcc -g -rdynamic -o output/index ../index.c ../index.h index_case.c -L ../ -L .
+gcc -g -rdynamic -o output/data ../data.c ../data.h data_case.c -L ../ -L .
