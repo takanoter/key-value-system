@@ -1,4 +1,5 @@
 #include "kvs_type.h"
+#include "kvs_utils.h"
 /* These info will persist */
 typedef struct DATA {
     int fd;
@@ -8,6 +9,7 @@ typedef struct DATA {
 } DATA;
 
 int data_head_sync(DATA* data);
+unsigned long long data_get_location(DATA* data, unsigned long long non_use_len);
 
 DATA* data_create(const char* head_filename);
 DATA* data_load(const char* head_file_name);

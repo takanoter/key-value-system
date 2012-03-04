@@ -1,0 +1,2 @@
+#!/bin/sh
+gcc -g -rdynamic -o output/pack ../kvspack.c ../kvspack.h pack_case.c -L ../ -L .

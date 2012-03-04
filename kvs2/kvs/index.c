@@ -9,6 +9,7 @@
 
 #include "index.h"
 #include "kvs_utils.h"
+#include "kvs_type.h"
 
 #define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE

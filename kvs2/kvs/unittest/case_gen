@@ -1,3 +1,4 @@
 #!/bin/sh
-gcc -g -rdynamic -o output/index ../index.c ../index.h index_case.c -L ../ -L .
-gcc -g -rdynamic -o output/data ../data.c ../data.h data_case.c -L ../ -L .
+gcc -g -rdynamic -o output/data ../data.c ../kvs_utils.c data_case.c -L ../ -L .
+gcc -g -rdynamic -o output/index ../index.c ../kvs_utils.c index_case.c -L ../ -L .
+gcc -g -rdynamic -o output/kvs ../data.c ../index.c ../kvs_utils.c ../kvs_api.c kvs_case.c -L ../ -L .

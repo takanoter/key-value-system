@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "kvs_utils.h"
 
 /* These info will persist */
 typedef struct INDEX_HEAD_LAYOUT {
@@ -50,6 +51,7 @@ typedef struct INDEX {
 
 INDEX* idx_create(const char *filename, unsigned long long key_num);
 INDEX* idx_load(const char *filename);
+int idx_exit(INDEX *index);
 int idx_sync(INDEX* index);
 
 int idx_insert(INDEX* idx, const IDX_NODE* node, unsigned long long timestamp);

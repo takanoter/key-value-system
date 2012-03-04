@@ -35,6 +35,12 @@ static DATA_HEAD_LAYOUT _datahead_create();
 static DATA_HEAD_LAYOUT _datahead_fetch(DATA* data);
 static int _datahead_read(int fd, DATA_HEAD_LAYOUT* datahead);
 
+unsigned long long data_get_location(DATA* data, unsigned long long non_use_len)
+{
+    non_use_len = 0;
+    return data->append_offset;
+}
+
 int data_head_sync(DATA* data)
 {
     int ret = err_success;
@@ -249,3 +255,4 @@ static int _datahead_read(int fd, DATA_HEAD_LAYOUT* datahead)
     
     return err_success;
 }
+

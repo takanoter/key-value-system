@@ -1,12 +1,16 @@
 #ifndef KVS_LIB_API
 #define KVS_LIB_API
 
+#define KVS_MAX_NAME 1024
+#define KVS_USER_SIZE 1024
+#include "data.h"
+#include "index.h"
 /**
  * KVS LIB
  */
 enum open_mode_t {
-    CREATE, 
-    LOAD,
+    CREATE = 1, 
+    LOAD = 2,
 };
 
 enum sync_mode_t {
@@ -25,8 +29,8 @@ typedef struct KVS_OPT {
     unsigned long long key_num; /*TODO, only available in opne_mode=CREATE now*/
 
     /*base operations*/
-    open_mode_t    open_mode;
-    sync_mode_t    sync_mode;
+    enum open_mode_t    open_mode;
+    enum sync_mode_t    sync_mode;
 
     /*third component*/
     char           log_filename[KVS_MAX_NAME];/*FIXME*/
@@ -47,13 +51,6 @@ typedef struct KVS {
     char  user_specify_info[KVS_USER_SIZE];
 } KVS;
 
-typedef struct KV_PAIR{
-    unsigned long long timestamp;    
-    unsigned long long key_len;
-    unsigned long long value_len;
-    void* key;
-    void* value;
-} KV_PAIR;
 
 
 int kv_open(KVS **kvs, const char *dbfile, KVS_OPT *option);
@@ -62,7 +59,7 @@ int kv_close(KVS **kvs);
 /*KVS opeations*/
 int kv_put(KVS *kvs, void* key, int key_len, void* value, int value_len);
 int kv_get(KVS *kvs, KV_PAIR *kv_pair);
-int kv_delete(KVS *kvs, void *key, int key_len);
+int kv_delete(KVS *kvs, const char *key, int key_len);
 int kv_sync(KVS *kvs, int sync_option);
 
 #endif

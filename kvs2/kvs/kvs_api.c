@@ -2,6 +2,11 @@
 #include <stdlib.h>
 #include <errno.h>
 #include "kvs_api.h"
+#include "kvs_utils.h"
+
+static KV_PAIR kv_pair_create(unsigned long long timestamp,
+                              void *key, unsigned long long key_len,
+                              void *value, unsigned long long value_len);
 
 int kv_open(KVS **kvs, const char *dbfilename, KVS_OPT *option)
 {
@@ -21,18 +26,9 @@ int kv_open(KVS **kvs, const char *dbfilename, KVS_OPT *option)
 	kvs_desp->option = *option;
 
     /*FIXME:snprintf return value*/
-	snprintf(kvs_desp->idx_name, sizeof(kvs_desp->idx_name), "%s.idx", dbfile);
-	snprintf(kvs_desp->data_name, sizeof(kvs_desp->data_name), "%s.data", dbfile);
+	snprintf(kvs_desp->idx_name, sizeof(kvs_desp->idx_name), "%s.idx", dbfilename);
+	snprintf(kvs_desp->data_name, sizeof(kvs_desp->data_name), "%s.data", dbfilename);
 	 	
-/*
-	kvs_desp->idx_db = fopen(kvs_desp->idx_name, "w");
-	kvs_desp->data_db = fopen(kvs_desp->data_name, "w");
-	if (NULL == kvs_desp->idx_db || NULL == kvs_desp->data_db) {
-		ret = err_open_file_failed;
-		goto OUT;
-	}
-*/
-    
     /* init index information*/
     kvs_desp->idx = NULL;
     if (CREATE == option->open_mode) {
@@ -65,12 +61,12 @@ int kv_open(KVS **kvs, const char *dbfilename, KVS_OPT *option)
 
 OUT:
     if (NULL != kvs_desp->data) {
-        data_close(kvs_desp->data);
+        data_exit(kvs_desp->data);
         kvs_desp->data = NULL;
     }
 
     if (NULL != kvs_desp->idx) {
-        idx_close(kvs_desp->idx);
+        idx_exit(kvs_desp->idx);
         kvs_desp->idx = NULL;
     }
 
@@ -92,6 +88,7 @@ int kv_put(KVS *kvs, void *key, int key_len, void *value, int value_len)
 {
     int ret = err_success;
     unsigned long long timestamp = _kv_consequence_id();
+    KV_PAIR kv_pair;
    
     IDX_NODE idx_node;
     idx_node.key_sign = create_key_sign(key, key_len); 
@@ -102,7 +99,7 @@ int kv_put(KVS *kvs, void *key, int key_len, void *value, int value_len)
         return -1;
     }
 
-    KV_PAIR kv_pair = kv_pair_create(timestamp, key, key_len, value, value_len);
+    kv_pair = kv_pair_create(timestamp, key, key_len, value, value_len);
     
     ret = data_insert(kvs->data, idx_node.value_offset, &kv_pair);
     if (ret != err_success) {
@@ -138,7 +135,7 @@ int kv_delete(KVS *kvs, const char* key, int key_size)
     unsigned long long timestamp = _kv_consequence_id();
    
     IDX_NODE idx_node;
-    idx_node.key_sign = create_key_sign(key, key_len); 
+    idx_node.key_sign = create_key_sign(key, key_size); 
     
     ret = idx_delete(kvs->idx, &idx_node, timestamp);
     if (err_success != ret) {
@@ -152,4 +149,27 @@ int kv_delete(KVS *kvs, const char* key, int key_size)
     }
 
 	return 0;
+}
+
+
+/*
+typedef struct KV_PAIR{
+    unsigned long long timestamp;    
+    unsigned long long key_len;
+    unsigned long long value_len;
+    void* key;
+    void* value;
+} KV_PAIR;
+*/
+static KV_PAIR kv_pair_create(unsigned long long timestamp,
+                              void *key, unsigned long long key_len,
+                              void *value, unsigned long long value_len)
+{
+    KV_PAIR kv_pair;
+    kv_pair.timestamp = timestamp;
+    kv_pair.key = key;
+    kv_pair.key_len = key_len;
+    kv_pair.value = value;
+    kv_pair.value_len = value_len;
+    return kv_pair;
 }
