@@ -14,67 +14,43 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include <kvs.h>
+typedef struct KV_SERVER {
+    int backlog;
+    int epool_queue_size;
+    struct epoll_event *events;
 
-#define MAXEVENTS			        1024
-#define MAXEPOLLS			        128
-#define	SYNC_TIME_SEC			    600
-#define	SERVER_LAZY_TIME_MSEC		(300*1000)
-#define	BACKLOG				        256
+    JOB jobs;
+    int job_queue_size;
 
-static int listen_port = 29866; 
+    int fresh_msec;
+
+    int worker_thread_num;
+    WORKER_FUNC worker_thread_func;
+    pthread_t *worker_thread_id;
+    
+    int listen_port;
+} KV_SERVER;
+
 static int deal_accept(int listen_fd);
 static int deal_listen(int port);
 static void setnonblocking(int fd);
+static void do_use_fd(KV_SERVER* server, int conn_sock);
+static int server_check(KV_SERVER* server);
 
-static void do_use_fd(int conn_sock)
+int server_run(KV_SERVER* server)
 {
-    char buf[1024];
-    int n;
-    int i;
-
-    n = read(conn_sock, buf, sizeof(buf));
-    for (i=0; i<n; i++) 
-    {
-        printf ("[%c]", buf[i]);
+	struct epoll_event ev;
+    int i = 0;
+    int listen_fd = 0;
+    int connect_fd;
+    if (NULL == server) {
+        return -1;
     }
-    printf ("\n");
-    write(conn_sock, "haha", sizeof("haha"));
-}
+    if (0 !== server_check(server)) {
+        return -1;
+    }
 
-
-int main(int argc, char** argv)
-{
-	int listen_fd, connect_fd, epoll_fd, nfds, i;
-	struct epoll_event ev, events[MAXEVENTS];
-	char c;
-
-/*
-	while ((c = getopt(argc, argv, "p:i:b:")) != -1) {
-		switch (c) {
-		case 'p':
-			listen_port = atoi(optarg);
-			break;
-		case 'i':
-			if (strcmp(optarg, "load") == 0) {
-				kvs_env.init_type = KVS_LOAD;
-			} else {
-				kvs_env.init_type = KVS_CREATE;
-			}
-			break;
-		case 'b':
-			printf ("big file optarg:%s \n", optarg);
-			kvs_env.disk_file = optarg;
-			break;
-		default:
-			printf ("Illegal arguement: %c\n", c);
-			exit (-1);
-		}
-	}
-*/
-			
-	printf ("listen_port:%d\n", listen_port);
-	listen_fd = deal_listen(listen_port);
+	listen_fd = deal_listen(server->listen_port);
 	if ((epoll_fd = epoll_create(MAXEPOLLS)) < 0) {
 		perror("epoll_create error");
 		exit(-1);
@@ -85,10 +61,18 @@ int main(int argc, char** argv)
 		perror("epoll_ctl add error");
 		exit(-1);
 	}
+    
+    WORKER_INFO worker_info; /*TODO: worker_info_array[] ? */
+    worker_info.worker_thread_func = server.worker_thread_func;
+    worker_info.server = server;
+    for (i = 0; i < server->worker_thread_num; i++) {
+        ptrhead_create(&worker_thread_id[i], NULL, worker, &worker_info);
+    }
+    server_thread_init(server);
 
 	while (1) {
 		printf ("listen_fd:%d, epoll_fd:%d\n", listen_fd, epoll_fd);
-		nfds = epoll_wait(epoll_fd, events, MAXEVENTS, SERVER_LAZY_TIME_MSEC); 
+		nfds = epoll_wait(epoll_fd, events, server->epool_queue_size, server->fresh_msec); 
 		if (nfds == -1) {
 			perror("epoll_wait error");
 			exit(-1);
@@ -103,7 +87,7 @@ int main(int argc, char** argv)
 				ev.data.fd = connect_fd;
 				if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, connect_fd, &ev) == -1) {
 					printf ("error epoll_ctl, add\n");
-					exit(0);
+                    continue;
 				}
 			} else if (events[i].events&EPOLLHUP) {
 				printf ("epoll hup.\n");
@@ -112,14 +96,77 @@ int main(int argc, char** argv)
 				printf ("epoll error.\n");
 				close(events[i].data.fd);
 			} else {
-				do_use_fd(events[i].data.fd);
+				do_use_fd(server, events[i].data.fd);
 			}
 		}
 	}
-
-	return 0;
+    return 0;
 }
 
+int server_set_queue_size(KV_SERVER* server, const int backlog, const int epool_queue_size, const int job_queue_size)
+{
+    int ret = 0;
+    if (NULL == server) {
+        return -1;
+    }
+    server->backlog = backlog;
+
+    server->epool_queue_size = epool_queue_size;
+    server->events = malloc(epool_queue_size * sizeof(struct epoll_event));
+    if (NULL == server->events) {
+        return -1;
+    }
+
+    ret = jobs_init(&(server->jobs), job_queue_size);
+    if (0 != ret) {
+        printf ("jobs init failed.\n");
+        return -1;
+    }
+
+    /*TODO: memory leak*/
+    return 0;
+}
+
+int server_set_thread(KV_SERVER* server, const int worker_thread_num, WORKER_FUNC worker_thread_func)
+{
+    if (NULL == server) {
+        return -1;
+    }
+    server->worker_thread_num = worker_thread_num;
+    server->worker_thread_func = worker_thread_func;
+    server->worker_thread_id = malloc(worker_thread_num * sizeof(pthread_t));
+    if (NULL == server->worker_thread_id) {
+        return -1;
+    }
+    
+    return 0;
+}
+
+int server_set_timeout(KV_SERVER* server, const int fresh_msec)
+{
+    if (NULL == server) {
+        return -1;
+    }
+    server->fresh_msec = fresh_msec;
+    return 0;
+}
+
+int server_set_port(KV_SERVER* server, const int listen_port)
+{
+    if (NULL == server) {
+        return -1;
+    }
+    server->listen_port = listen_port;
+    return 0;
+}
+
+/*Server bind functions*/
+static void do_use_fd(KV_SERVER* server, int conn_sock)
+{
+    jobs_push(server->jobs, conn_sock);
+}
+
+/*Network involved tools functions*/
 static void setnonblocking(int fd)
 {
 	int opt = fcntl(fd, F_GETFL, 0);
@@ -180,13 +227,10 @@ static int deal_accept(int listen_fd)
 	setnonblocking(connect_fd);
 	return connect_fd;
 }
-/*
-static void sig_usr(int signo)
+
+static int server_check(KV_SERVER *server)
 {
-	if (signo==SIGUSR1) {
-		printf ("exit..\n");
-		kv_exit();
-	}
-	return;
+    /*TODO*/
+    printf ("server check success.\n");
+    return 0;
 }
-*/
