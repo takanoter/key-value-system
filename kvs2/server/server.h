@@ -1,3 +1,6 @@
+#ifndef KV_SERVER_H
+#define KV_SERVER_H 1
+
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,22 +17,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-typedef struct KV_SERVER {
-    int backlog;
-    int epool_queue_size;
-    struct epoll_event *events;
-
-    JOB jobs;
-    int job_queue_size;
-
-    int fresh_msec;
-
-    int worker_thread_num;
-    WORKER_FUNC worker_thread_func;
-    pthread_t *worker_thread_id;
-    
-    int listen_port;
-} KV_SERVER;
+#include "worker.h"
+typedef struct KV_SERVER_T KV_SERVER;
 
 int server_run(KV_SERVER* server);
 
@@ -41,3 +30,4 @@ int server_set_timeout(KV_SERVER* server, const int fresh_msec);
 
 int server_set_port(KV_SERVER* server, const int listen_port);
 
+#endif

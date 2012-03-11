@@ -26,10 +26,10 @@ int jobs_fetch(JOBS* jobs)
     {
         pthread_mutex_lock(jobs->lock);
         for (i=0; i<jobs->size; i++) {
-            if (1 == jobs[i].is_used) {
-                ret_fd = jobs[i].fd;
-                jobs[i].is_used = 0;
-                jobs[i].fd = -1;
+            if (1 == jobs->jobs[i].is_used) {
+                ret_fd = jobs->jobs[i].fd;
+                jobs->jobs[i].is_used = 0;
+                jobs->jobs[i].fd = -1;
                 break;
             }
         }
@@ -45,23 +45,23 @@ int jobs_push(JOBS* jobs, int fd)
     {
         pthread_mutex_lock(jobs->lock); /*TODO:bad lock, need while(1)?*/
         for (i=0; i<jobs->size; i++) { /*TODO:alrithm*/
-            if (0 == jobs[i].is_used ) {
+            if (0 == jobs->jobs[i].is_used ) {
                 break;
             }
         }
-        if (i == size) {
+        if (i == jobs->size) {
             printf ("jobs queue full[%d].\n", jobs->size);
             ret = -1;
         } else {
-            jobs[i].is_used = 1;
-            jobs[i].fd = fd;
+            jobs->jobs[i].is_used = 1;
+            jobs->jobs[i].fd = fd;
         }
         pthread_mutex_unlock(jobs->lock);
     }
     return ret;
 }
 
-int jobs_init(JOBS *jobs, const int job_quue_size)
+int jobs_init(JOBS *jobs, const int job_queue_size)
 {
     int ret = 0;
     int i = 0;

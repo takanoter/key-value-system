@@ -14,12 +14,16 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-typedef struct KV_SERVER {
+#include "server.h"
+#include "jobs.h"
+#include "worker.h"
+
+typedef struct KV_SERVER_T {
     int backlog;
     int epool_queue_size;
     struct epoll_event *events;
 
-    JOB jobs;
+    JOBS jobs;
     int job_queue_size;
 
     int fresh_msec;
@@ -32,25 +36,30 @@ typedef struct KV_SERVER {
 } KV_SERVER;
 
 static int deal_accept(int listen_fd);
-static int deal_listen(int port);
+static int deal_listen(int port, int backlog);
 static void setnonblocking(int fd);
 static void do_use_fd(KV_SERVER* server, int conn_sock);
 static int server_check(KV_SERVER* server);
 
+#define MAXEPOLLS 1024
 int server_run(KV_SERVER* server)
 {
 	struct epoll_event ev;
     int i = 0;
-    int listen_fd = 0;
+    int nfds;
+    int epoll_fd;
     int connect_fd;
+    int listen_fd = 0;
+
     if (NULL == server) {
         return -1;
     }
-    if (0 !== server_check(server)) {
+    if (0 != server_check(server)) {
+        printf ("server check failed.\n");
         return -1;
     }
 
-	listen_fd = deal_listen(server->listen_port);
+	listen_fd = deal_listen(server->listen_port, server->backlog);
 	if ((epoll_fd = epoll_create(MAXEPOLLS)) < 0) {
 		perror("epoll_create error");
 		exit(-1);
@@ -63,23 +72,23 @@ int server_run(KV_SERVER* server)
 	}
     
     WORKER_INFO worker_info; /*TODO: worker_info_array[] ? */
-    worker_info.worker_thread_func = server.worker_thread_func;
-    worker_info.server = server;
+    worker_info.worker_thread_func = server->worker_thread_func;
+    worker_info.jobs = &(server->jobs);
     for (i = 0; i < server->worker_thread_num; i++) {
-        ptrhead_create(&worker_thread_id[i], NULL, worker, &worker_info);
+        ptrhead_create(&(server->worker_thread_id[i]), NULL, worker, &worker_info);
     }
     server_thread_init(server);
 
 	while (1) {
 		printf ("listen_fd:%d, epoll_fd:%d\n", listen_fd, epoll_fd);
-		nfds = epoll_wait(epoll_fd, events, server->epool_queue_size, server->fresh_msec); 
+		nfds = epoll_wait(epoll_fd, server->events, server->epool_queue_size, server->fresh_msec); 
 		if (nfds == -1) {
 			perror("epoll_wait error");
 			exit(-1);
 		}
 
 		for (i = 0; i < nfds; i++) {
-			if (events[i].data.fd == listen_fd) {
+			if (server->events[i].data.fd == listen_fd) {
 				printf("EVENT FROM listenfd\n");
 				connect_fd = deal_accept(listen_fd);
 
@@ -89,14 +98,14 @@ int server_run(KV_SERVER* server)
 					printf ("error epoll_ctl, add\n");
                     continue;
 				}
-			} else if (events[i].events&EPOLLHUP) {
+			} else if (server->events[i].events&EPOLLHUP) {
 				printf ("epoll hup.\n");
-				close(events[i].data.fd);
-			} else if (events[i].events&EPOLLERR) {
+				close(server->events[i].data.fd);
+			} else if (server->events[i].events&EPOLLERR) {
 				printf ("epoll error.\n");
-				close(events[i].data.fd);
+				close(server->events[i].data.fd);
 			} else {
-				do_use_fd(server, events[i].data.fd);
+				do_use_fd(server, server->events[i].data.fd);
 			}
 		}
 	}
@@ -163,7 +172,7 @@ int server_set_port(KV_SERVER* server, const int listen_port)
 /*Server bind functions*/
 static void do_use_fd(KV_SERVER* server, int conn_sock)
 {
-    jobs_push(server->jobs, conn_sock);
+    jobs_push(&(server->jobs), conn_sock);
 }
 
 /*Network involved tools functions*/
@@ -176,7 +185,7 @@ static void setnonblocking(int fd)
 	}
 }
 
-static int deal_listen(int port)
+static int deal_listen(int port, int backlog)
 {
 	int listen_fd;
 	int sock_buf_size;
@@ -202,7 +211,7 @@ static int deal_listen(int port)
 		exit(-1);
 	}
 
-	if (listen(listen_fd, BACKLOG) < 0) {
+	if (listen(listen_fd, backlog) < 0) {
 		perror("listen error");
 		exit(-1);
 	}
@@ -231,6 +240,22 @@ static int deal_accept(int listen_fd)
 static int server_check(KV_SERVER *server)
 {
     /*TODO*/
+    if (NULL == server->events) {
+        printf ("server->events is NULL.\n");
+        return -1;
+    }
+    if (NULL == server->jobs.jobs) {
+        printf ("server->jobs is NULL.\n");
+        return -1;
+    }
+    if (NULL == server->worker_thread_func) {
+        printf ("server worker_thread_func is NULL.\n");
+        return -1;
+    }
+    if (NULL == server->worker_thread_id) {
+        printf ("server worker_thread_id is NULL.\n");
+        return -1;
+    }
     printf ("server check success.\n");
     return 0;
 }

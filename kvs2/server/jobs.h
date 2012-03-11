@@ -1,3 +1,6 @@
+#ifndef KV_JOBS_H
+#define KV_JOBS_H 1
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,3 +29,5 @@ int jobs_push(JOBS* jobs, int fd);
 int jobs_init(JOBS *jobs, const int job_quue_size);
 
 int jobs_destroy(JOBS *jobs);
+
+#endif

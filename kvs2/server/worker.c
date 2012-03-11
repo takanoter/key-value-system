@@ -3,25 +3,21 @@
 #include <string.h>
 
 #include "worker.h"
-
-typedef int(*func)(int fd) WORKER_FUNC;
-
-typedef struct WORKER_INFO
-{
-    WORKER_FUNC worker_thread_func;
-    KV_SERVER *server;
-}WORKER_INFO;
-
+#include "jobs.h"
 
 void *worker(void *arg)
 {
-    int ret;
+    int fd = -1;
+    int ret = 0;
+    JOBS* jobs = NULL;
     WORKER_INFO worker_info;
+    WORKER_FUNC worker_thread_func = NULL;
+
     worker_info = *((WORKER_INFO*)arg);
-    server = worker_info.server;
+    jobs = worker_info.jobs;
     worker_thread_func = worker_info.worker_thread_func;
     while (1) {
-        fd = jobs_fetch(server->jobs);
+        fd = jobs_fetch(jobs);
         if (-1 == fd) {
             sleep(1);
         }
