@@ -18,23 +18,6 @@
 #include "jobs.h"
 #include "worker.h"
 
-typedef struct KV_SERVER_T {
-    int backlog;
-    int epool_queue_size;
-    struct epoll_event *events;
-
-    JOBS jobs;
-    int job_queue_size;
-
-    int fresh_msec;
-
-    int worker_thread_num;
-    WORKER_FUNC worker_thread_func;
-    pthread_t *worker_thread_id;
-    
-    int listen_port;
-} KV_SERVER;
-
 static int deal_accept(int listen_fd);
 static int deal_listen(int port, int backlog);
 static void setnonblocking(int fd);
@@ -75,12 +58,12 @@ int server_run(KV_SERVER* server)
     worker_info.worker_thread_func = server->worker_thread_func;
     worker_info.jobs = &(server->jobs);
     for (i = 0; i < server->worker_thread_num; i++) {
-        ptrhead_create(&(server->worker_thread_id[i]), NULL, worker, &worker_info);
+        pthread_create(&(server->worker_thread_id[i]), NULL, worker, &worker_info);
     }
-    server_thread_init(server);
+    //server_thread_init(server);
 
 	while (1) {
-		printf ("listen_fd:%d, epoll_fd:%d\n", listen_fd, epoll_fd);
+		//printf ("listen_fd:%d, epoll_fd:%d\n", listen_fd, epoll_fd);
 		nfds = epoll_wait(epoll_fd, server->events, server->epool_queue_size, server->fresh_msec); 
 		if (nfds == -1) {
 			perror("epoll_wait error");
@@ -89,7 +72,7 @@ int server_run(KV_SERVER* server)
 
 		for (i = 0; i < nfds; i++) {
 			if (server->events[i].data.fd == listen_fd) {
-				printf("EVENT FROM listenfd\n");
+				//printf("EVENT FROM listenfd\n");
 				connect_fd = deal_accept(listen_fd);
 
 				ev.events = EPOLLIN | EPOLLET;

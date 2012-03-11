@@ -20,8 +20,10 @@ void *worker(void *arg)
         fd = jobs_fetch(jobs);
         if (-1 == fd) {
             sleep(1);
+            continue;
         }
         ret = worker_thread_func(fd);
+        close(fd);
     }
 }
 

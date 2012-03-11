@@ -11,27 +11,25 @@
 #include <unistd.h>
 
 #include <errno.h>
-#define SERVER_PORT 29866
-#define SERVER_IP   "127.0.0.1"
-#define BUFFER_SIZE 1024
-#define FILE_NAME_MAX_SIZE 512
 
-int main(int argc, char **argv)
+int connect_to_server(char* ip, const int port)
 {
-/*
-    if (argc != 2)
-    {
-        printf("Please input the IP address of the server \n", argv[0]);
-        exit(1);
-    }
-*/
     int ret;
     struct sockaddr_in client_addr;
+    struct sockaddr_in server_addr;
+    int client_socket;
+
+    if (NULL == ip) {
+        printf ("ip is NULL.\n");
+        return -1;
+    }
+
     bzero(&client_addr, sizeof(client_addr)); 
     client_addr.sin_family = AF_INET; 
     client_addr.sin_addr.s_addr = htons(INADDR_ANY); 
     client_addr.sin_port = htons(0); 
-    int client_socket = socket(AF_INET, SOCK_STREAM, 0);
+    client_socket = socket(AF_INET, SOCK_STREAM, 0);
+
     if (client_socket < 0)
     {
         printf("Create Socket Failed!\n");
@@ -45,28 +43,35 @@ int main(int argc, char **argv)
         exit(1);
     }
 
-    struct sockaddr_in server_addr;
     bzero(&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    if (inet_aton(SERVER_IP, &server_addr.sin_addr) == 0) 
+    if (inet_aton(ip, &server_addr.sin_addr) == 0) 
     {
         printf("Server IP Address Error! \n");
         exit(1);
     }
 
-    server_addr.sin_port = htons(SERVER_PORT);
+    server_addr.sin_port = htons(port);
     socklen_t server_addr_length = sizeof(server_addr);
 
     ret = connect(client_socket, (struct sockaddr*) &server_addr, server_addr_length);
     if (ret < 0)
     {
-        printf("Can Not Connect To %s! error:%s\n", SERVER_IP, strerror(errno));
+        printf("Can Not Connect To %s! error:%s\n", ip, strerror(errno));
         exit(1);
     }
+    return client_socket;
+}
 
-    send(client_socket, "haha", sizeof("haha"), 0);
+int send_message_to_server(int fd, void* buf, int buf_size)
+{
+    if (fd < 0) {
+        printf ("invalid fd:%d\n", fd);
+    }
+    send(fd, buf, buf_size, 0);
+}
 
-    sleep(5);
-    close(client_socket);
-    return 0;
+int close_connection(int fd)
+{
+    close(fd);
 }

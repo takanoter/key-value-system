@@ -18,7 +18,22 @@
 #include <netinet/in.h>
 
 #include "worker.h"
-typedef struct KV_SERVER_T KV_SERVER;
+typedef struct KV_SERVER_T {
+    int backlog;
+    int epool_queue_size;
+    struct epoll_event *events;
+
+    JOBS jobs;
+    int job_queue_size;
+
+    int fresh_msec;
+
+    int worker_thread_num;
+    WORKER_FUNC worker_thread_func;
+    pthread_t *worker_thread_id;
+    
+    int listen_port;
+} KV_SERVER;
 
 int server_run(KV_SERVER* server);
 
