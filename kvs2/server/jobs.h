@@ -20,6 +20,9 @@ typedef struct JOBS
     JOB* jobs;
     int timeout;
     pthread_mutex_t *lock;
+    DENY_CALLBACK deny;
+    DENY_STATE deny;
+    Pthread_cond_t *deny_cond
 }JOBS;
 
 int jobs_fetch(JOBS* jobs);
