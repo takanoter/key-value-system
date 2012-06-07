@@ -1,0 +1,40 @@
+Storage Engine used for KVS
+
+1.Object
+    One storage engine instance will be treated as cabinet or table or sth. else. 
+    Operations: Open(Create), Close, Destroy, Dump, Arrange.
+
+2.INDEX structure
+    A hash_head + linklist or 2xtree. 
+    Hash_head length is setted when creating storage engien instance. Whether contains values'space address is decided when loading instance.
+
+3.Data layout in file-system.
+    
+
+4.Layout:
+engine:
+  index
+  data.0
+  data.1
+  configure
+  status
+    
+
+index:
+  index_head: verison/id/visiable-engine-md5
+  idx_slot: [key, 
+
+data:
+  data_head: version/visiable-engine-md5  (changed only once)
+  [id,K,V]
+
+  
+
+5.Configure & Status file
+  PATH
+  func-INDEX
+  func-dump
+  func-arrange
+
+
+
