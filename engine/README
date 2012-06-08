@@ -22,7 +22,7 @@ engine:
 
 index:
   index_head: verison/id/visiable-engine-md5
-  idx_slot: [key, 
+  idx_slot: [key, space_offset, space_len]
 
 data:
   data_head: version/visiable-engine-md5  (changed only once)
@@ -35,6 +35,28 @@ data:
   func-INDEX
   func-dump
   func-arrange
+  v
 
+Configure can be read or written. but STATUS file only be read or changed by KVS-ENGINE.
+
+****INDEX_F + STATUS_F -> STATUS_F  
+Status File:
+   version
+   Space-info
+   id
+   key_len
+   index_item {} {} {}
+
+DATA File:
+  version
+  {id,k,v} {} {} {}
+
+Configure:
+  version:
+  PATH
+  func-INDEX
+  func-dump
+  func-arrange
+  
 
 
