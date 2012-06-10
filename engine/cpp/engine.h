@@ -14,8 +14,12 @@ namespace kvs {
 
 class HashEngine : public ENGINE {
   public:
-    HashEngine(const EngineOptions& options, const std::string& dbname);
+    HashEngine();
     virtual ~HashEngine();
+
+    virtual Status Create(const EngineOptions& options, const std::string& name);
+    virtual Status Open(const EngineOptions& options);
+    virtual Status Close();
 
     // Implementations of the Engine interface
     virtual Status Put(const PutOptions&, const Slice& key, const Slice& value);
@@ -29,21 +33,28 @@ class HashEngine : public ENGINE {
   private:
     //*FIXME LOCK LOCK LOCK
    
-    Version version_; 
-    std::string& name_; 
-    Offset id_; /*FIXME max item limit,  consistency control LOCK?*/
-			    /*FIXME this will released in User for multithread consideration*/
+    Version cabinet_version_; 
+    std::string& cabinet_name_; 
+    std::string fs_path_;
 
-    Writer writer_;
-      -->Env env_;
-
-    //both in soft-file
-    Index index_;
-    Space space_;
+    Offset id_; /*FIXME max operation limit,  consistency control LOCK?*/
+	        /*FIXME this will released in User for multithread consideration*/
+    Health health_;
 
     //Functions
     Arrange arrange_;
 
+    //Configure
+    Configure conf_conf_; 
+    Configure meta_conf_; 
+    Configure data_conf_; 
+    //we seldom change conf file indeed. Only used for load and set_property+persist, never get_property.
+    //because Configure is persist-layout, while specified item in HashEngine is a memory-structure.
+
+    //both in soft-file
+    //memory
+    Index index_; 
+    Space space_;
   private:
 
 

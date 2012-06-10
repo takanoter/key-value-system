@@ -19,14 +19,15 @@ struct ArrangeOptions;
 
 class ENGINE {
   public:
-    static Status Open(const EngineOptions& options, 
-		       const std::string& name, 
-                       ENGINE** engineptr);
 //    static Status Close(const Options& options,
 //                        ENGINE** engineptr);
 
     ENGINE() {};
     virtual ~ENGINE();
+
+    virtual Status Create(const EngineOptions& options, const std::string& name) = 0;
+    virtual Status Open(const EngineOptions& options) = 0; 
+    virtual Status Close() = 0;
 
     virtual Status Put(const PutOptions& options, 
 		       const Slice& key,
@@ -41,6 +42,7 @@ class ENGINE {
     virtual Status GetArrangeProgress(const int& progress) = 0;
     virtual Status CancelArrange() = 0;
 
+//    virtual Status Version() = 0; //Data Version
 
   private:
 //    DB(const DB&);

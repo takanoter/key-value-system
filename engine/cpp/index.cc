@@ -41,7 +41,7 @@ Status HashEngine::Open(const EngineOptions& opt) {
   if (!s.ok()) return s;
   s = index_.Load(meta_conf_);
   if (!s.ok()) return s;
-  s = space_.Load(meta_conf_, conf_conf_.Get("index_head_size").toInt());
+  s = space_.Load(meta_conf_);
   if (!s.ok()) return s;
   return s;
 }
@@ -71,7 +71,7 @@ rollback:
 
 Status HashEngine::Get(const GetOptions& opt, const Slice& k, std::string* v) {
     Offset off, len;
-    Status s = index_.search(k, off, len);
+    Status s = index_.Search(k, off, len);
     if (!s.ok()) return s;
     if (opt.only_check) return s;  //s.ok() == key is exist
     s = writer_.Read(off, len, v);

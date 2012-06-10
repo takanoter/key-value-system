@@ -39,24 +39,37 @@ data:
 
 Configure can be read or written. but STATUS file only be read or changed by KVS-ENGINE.
 
-****INDEX_F + STATUS_F -> STATUS_F  
-Status File:
-   version
-   Space-info
-   id
-   key_len
-   index_item {} {} {}
-
+/***************************/
+没有data file与conf file的区别（包括加载区别）
+Status/Meta File:
+   DataVersion [SOLID, but for identify]
+   cabinet_name[SOLID, but for consistency]
+   key_len [SOLID, but for self-parse]
+   id [STATUS-WHOLE]
+   cur_data_file [STATUS]
+   health: xxx-inconsitency [STATUS]
+   Space-info [STATUS-SPACE]
+   index_item_length [META-INFO]
+   -End-Of-Visual- 
+   [Black-8char-name][SIZE]index_item {} {} {} [META-INFO] 
+//Check consistency with MetaFile, and Recovery(max).
 DATA File:
-  version
-  {id,k,v} {} {} {}
+  DataVersion[SOLID, for consistency]
+  cabinet_name[SOLID],   name is data's property, not engine's.
+  key_len[SOLID, for self-parse]
+  -End-Of-Visual- 
+  [Black-8char-name][SIZE]{id,k,v} {} {} {}
 
-Configure:
-  version:
+//things about Engine, but not data. 
+//no verison. because version is a data-layout sign.
+Configure: 
+  EngineVersion
+  cabinet_name //for human readable
   PATH
-  func-INDEX
+  func-INDEX: index_head_size
   func-dump
   func-arrange
+  -End-Of-Visual- 
   
 
 
