@@ -72,4 +72,11 @@ Configure:
   -End-Of-Visual- 
   
 
+ItemLayout:
+  name:property     --CONFIGURE_ITEM_LENGTH
+  -End-Of-Visual-   --CONFIGURE_ITEM_LENGTH
+  [name][:][len]    --CONFIGURE_ITEM_LENGTH = name_fix_len + sizeof(Offset)
+  xxxxx
+
+
 

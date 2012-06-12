@@ -13,6 +13,7 @@
 
 namespace kvs {
 
+const int CONFIGURE_ITEM_SIZE  32
 class CONFIGURE {
   public:
     CONFIGURE() 
@@ -30,9 +31,14 @@ class CONFIGURE {
     Status Create(std::string& pathname);
 
   private:
-    std::string name;
-    bool need_solid;
-    int fd;
+    std::string name_;
+    bool need_solid_;
+    bool blank_;
+    int fd_;
+    char item_buffer_[CONFIGURE_ITEM_SIZE+1];
+    map_visual_;
+    map_black_;
+    Offset last_offset_;
 }; // class CONFIGURE
 
 }; // namespace kvs
