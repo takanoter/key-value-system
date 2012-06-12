@@ -6,6 +6,10 @@ L2:job queue [    ]
 L3:fetch worker-thread []  thread_func_callback
 
 
-final destination: hope to DenyOfService in L1 when L1 || L2 || L3 .. temporary leak of source.
+gola ? : DenyOfService in L1 when L1 || L2 || L3 .. temporary leak of source.
+
+
+1.Event
+2.TimedOut Queue from fb.folly.
 
 
