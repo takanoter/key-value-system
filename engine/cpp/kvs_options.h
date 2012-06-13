@@ -54,6 +54,7 @@ struct EngineOptions {
   double hole_horizon;
   std::string path;
   unsigned int index_head_size;
+  int key_length;
 
   EngineOptions();
 };

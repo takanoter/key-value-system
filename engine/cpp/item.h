@@ -120,6 +120,13 @@ class ITEM {
         }
         return s;
     }
+
+    bool Fit(const char* item_head, const int head_size) {
+        if (strncmp(key.data(), item_head, key.size()) == 0) {
+            return true;
+        }
+        return false;
+    }
 }; // class ITEM
 
 

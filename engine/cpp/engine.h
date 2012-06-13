@@ -33,12 +33,14 @@ class HashEngine : public ENGINE {
   private:
     //*FIXME LOCK LOCK LOCK
    
-    Version cabinet_version_; 
-    std::string& cabinet_name_; 
+    std::string cabinet_version_; 
+    std::string cabinet_name_; 
     std::string fs_path_;
+    int key_length_;
 
     Offset id_; /*FIXME max operation limit,  consistency control LOCK?*/
 	        /*FIXME this will released in User for multithread consideration*/
+    int cur_data_file_;
     Health health_;
 
     //Functions
@@ -54,9 +56,18 @@ class HashEngine : public ENGINE {
     //both in soft-file
     //memory
     Index index_; 
-    Space space_;
-  private:
+    Space space_; //data_conf_ manager
 
+  private:
+    Status ConfsBorn(const std::string path);
+    Status ConfsCheckLoad(const std::string path);
+    Status ConfsSolid();
+    Status FillMetaConfigure(Configure& meta);
+    Status FillConfConfigure(Configure& conf);
+    Status FillDataConfigure(Configure& data);
+    std::string GetEngineVersion() {
+        return "0.01"
+    }
 
 }; // class HashEngine
 

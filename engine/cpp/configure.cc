@@ -32,12 +32,14 @@ Status CONFIGURE::Set(const Slice& key, const Slice& property) {
         ITEM item(key, property);
         items_[key.data()]=item;
     }
+    need_solid_ = true;
     return s;
 }
 
 Status CONFIGURE::Set(const ITEM& item) {
     Status s;
     items_[item.key.data()] = item;
+    need_solid_ = true;
     return s;
 }
 
@@ -71,35 +73,54 @@ Status CONFIGURE::NewItem(const ITEM& item)
    return s;
 }
 
-char* CONFIGURE::GetSpace(const Slice& key) {
+char* CONFIGURE::GetBuffer(const Slice& key) {
     return items_[key.data()].buf;
 }
 
 
-//Memory Only
+//Memory Only, ignore..
+/*
 Offset CONFIGURE::GetLastOffset() {
     return last_offset;
 }
+*/
 
 Status CONFIGURE::Solid() {
     Status s;
+    ITEM_MAP::iterator it;
     if (blank_) {
         std::list<ITEM> black_items;
         std::list<ITEM> last_items;
-        //遍历 {
-           s = AppendItem(item, &off);
+        for (it = items_.begin(); it != items_.end(); it++) {
+            ITEM item = it->second;
+            if (item.type == black) {
+                if (OffsetFeb31 == item.len) {
+                    last_items.push_back(item);
+                } else {
+                    black_items.push_back(item);
+                }
+            }
+            s = AppendItem(it->second, &off);
         }
-        s = AppendBlackSign(&off);
-        //遍历Black {
-           s = AppendItem(item, &off);
+
+        std::list<ITEM>::iterator iter;
+        for (iter=black_items.begin(); iter!=black_items.end(); iter++) {
+            s = AppendItem(*iter, &off);
+        }
+        for (iter=last_items.begin(); iter!=last_items.end(); iter++) {
+            s = AppendItem(*iter, &off);
+        }
+
+        s = FetchLastOffset(&last_offset_);
+        if (!s.ok()) {
+           last_offset_t = OffsetFeb31;  
+           return s;
         }
         blank_ = false;
     } else {
-        // 遍历 {
+        for (it = items_.begin(); it != items_.end(); it++) {
             s = InjectItem(item);
-        }
-        // 遍历 {
-            s = InjectItem(item);
+            if (!s.ok()) return s;
         }
     }
     need_solid_ = false;
@@ -215,12 +236,7 @@ Status CONFIGURE::SearchItemOffset(const Item& item, Offset* offset) {
             *offset = off;
             return; 
         }
-/*
-        if (strncmp(key.data(), item_buffer, key.size()) == 0) {
-            *offset = off;
-            return s;
-        }
-*/
+
         NextOffset(item, &off);
         if (OffsetFeb31 == off) break;
     }
