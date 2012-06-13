@@ -9,6 +9,9 @@
 
 //HAHA:) these copy from leveldb
 namespace kvs {
+typedef unsigned long long Offset;
+const Offset OffsetFeb31 = 10000000+1806;
+
 enum CodeType {
   kOk = 0,
   kNotFound = 1,

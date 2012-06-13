@@ -34,6 +34,17 @@ Status LoadFile(const std::string pathname, int *fd) {
     return s;
 }
 
+Status WriteFile(const int fd, const Offset offset, const char* buf, const int len) {
+    int ret = 0;
+    Status s;
+    /*FIXME*/
+    ret = lseek(fd, offset, SEEK_SET);
+    ret = write(fd, buf, len);
+    if (ret<0) {
+        s.SetIOError(ret);
+    }
+    return s;
+}
 Status WriteFile(const int fd, const Offset offset, const Slice& slice) {
     int ret = 0;
     Status s;
@@ -55,6 +66,15 @@ Status ReadFile(const int fd, const Offset offset, char* buf, const int len) {
     if (ret<0) {
         s.SetIOError(ret);
     }
+    return s;
+}
+
+Status GetFileLast(const int fd, Offset *offset)
+{
+    Status s;
+    ret = lseek(fd, 0, SEEK_SET);
+    off = lseek(fd, 0, SEEK_END);
+    *offset = off;
     return s;
 }
 

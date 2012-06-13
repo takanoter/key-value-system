@@ -14,6 +14,8 @@
 namespace kvs {
 
 const int CONFIGURE_ITEM_SIZE  32
+typedef std::map<std::string, std::string> ITEM_MAP;
+
 class CONFIGURE {
   public:
     CONFIGURE() 
@@ -36,8 +38,7 @@ class CONFIGURE {
     bool blank_;
     int fd_;
     char item_buffer_[CONFIGURE_ITEM_SIZE+1];
-    map_visual_;
-    map_black_;
+    ITEM_MAP items_;
     Offset last_offset_;
 }; // class CONFIGURE
 
