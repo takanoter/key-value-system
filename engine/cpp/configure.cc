@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include "kvs_status.h"
 #include "kvs_slice.h"
+#include "item.h"
 #include "configure.h"
 #include "posix.h"
 
@@ -141,7 +142,7 @@ Status CONFIGURE::Load(const std::string& pathname) {
             if (s.EndOfFile()) break;
             return s;
         }
-        Item item(item_buffer_, CONFIGURE_ITEM_SIZE);
+        ITEM item(item_buffer_, CONFIGURE_ITEM_SIZE);
         s = NewItem(item);
         if (!s.ok()) return s;
         NextOffset(item, &off);
@@ -171,7 +172,7 @@ Status CONFIGURE::Create(const std::string& pathname) {
 Status CONFIGURE::AppendItem(const ITEM& item, Offset *offset) {
     Status s;
     
-    item.serialize(item_buffer_, CONFIGURE_ITEM_SIZE);
+    item.Serialize(item_buffer_, CONFIGURE_ITEM_SIZE);
     s = WriteFile(fd_, *offset, item_buffer_, CONFIGURE_ITEM_SIZE);
     if (!s.ok()) return s;
     if (black == item.type && OffsetFeb31 != item.len) {
@@ -213,18 +214,18 @@ Status CONFIGURE::FetchItemBuffer(const Offset off)
 {
     Offset off = 0;
     Status s;
-    memset(item_buffer, 0, sizeof(item_buffer));
-    s = ReadFile(fd_, off, item_buffer, CONFIGURE_ITEM_SIZE);
+    memset(item_buffer_, 0, sizeof(item_buffer));
+    s = ReadFile(fd_, off, item_buffer_, CONFIGURE_ITEM_SIZE);
     if (!s.ok()) return s;
     return s;
 }
 
 
-Status CONFIGURE::SearchItemOffset(const Item& item, Offset* offset) {
+Status CONFIGURE::SearchItemOffset(const ITEM& item, Offset* offset) {
     Offset off = 0; 
     Status s;
     while (!s.EndOfFile()) {
-        s = ReadFile(fd, off, item_buffer, CONFIGURE_ITEM_SIZE);
+        s = ReadFile(fd_, off, item_buffer_, CONFIGURE_ITEM_SIZE);
         if (!s.ok()) {
             if (s.EndOfFile()) {
                 break;
@@ -232,9 +233,9 @@ Status CONFIGURE::SearchItemOffset(const Item& item, Offset* offset) {
             return s;
         }
         
-        if (item.Fit(item_buffer, CONFIGURE_ITEM_SIZE)) {
+        if (item.Fit((const char*)item_buffer_, (int)CONFIGURE_ITEM_SIZE)) {
             *offset = off;
-            return; 
+            return s; 
         }
 
         NextOffset(item, &off);
@@ -244,11 +245,13 @@ Status CONFIGURE::SearchItemOffset(const Item& item, Offset* offset) {
     return s;
 }
 
+/*
 Status CONFIGURE::GetItemOffsetBlack(const Slice& key, Offset* offset) {
      Status s = GetItemOffset(key, offset);
      *offset += CONFIGURE_ITEM_SIZE; 
      return s;
 };
+*/
 
 }; // namespace kvs
 

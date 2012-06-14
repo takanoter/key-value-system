@@ -8,13 +8,14 @@
 #define KVS_ENGINE_INCLUDE_CONFIGURE_H_
 
 #include <stdio.h>
+#include <map>
 #include "kvs_status.h"
 #include "kvs_slice.h"
+#include "item.h"
 
 namespace kvs {
 
-const int CONFIGURE_ITEM_SIZE  32
-typedef std::map<std::string, std::string> ITEM_MAP;
+typedef std::map<std::string, ITEM> ITEM_MAP;
 
 class CONFIGURE {
   public:
@@ -43,6 +44,8 @@ class CONFIGURE {
     bool need_solid_;
     bool blank_;
     int  fd_;
+
+    //buffer
     char item_buffer_[CONFIGURE_ITEM_SIZE+1];
  
   private:
@@ -53,8 +56,8 @@ class CONFIGURE {
     void   NextOffset(const ITEM& item, Offset *offset);
     Status FetchLastOffset(Offset *off);
     Status FetchItemBuffer(const Offset off);
-    Status SearchItemOffset(const Item& item, Offset* offset);
-    Status GetItemOffsetBlack(const Slice& key, Offset* offset); 
+    Status SearchItemOffset(const ITEM& item, Offset* offset);
+//    Status GetItemOffsetBlack(const Slice& key, Offset* offset); 
 }; // class CONFIGURE
 
 }; // namespace kvs

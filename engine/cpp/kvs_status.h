@@ -18,7 +18,8 @@ enum CodeType {
     kNotExist = 1,
     kExist = 2,
     kInvalidParam = 3,
-    kIOError = 4
+    kIOError = 4,
+    kEndOfFile = 5
 };
 
 class Status {
@@ -35,11 +36,13 @@ class Status {
     static Status OK() { return Status(); }
 
     bool ok() const { return (msg_ == NULL); }
+    bool EndOfFile() const { return (code_ == kEndOfFile);}
 
     void SetNotExist();
     void SetExist();
     void SetInvalidParam(const char* name, long value);
     void SetIOError(int error_ret);
+    void SetEndOfFile();
 
   private:
     // OK status has a NULL msg_.  Otherwise, msg_ is a new[] array

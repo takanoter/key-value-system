@@ -63,7 +63,9 @@ Status ReadFile(const int fd, const Offset offset, char* buf, const int len) {
     /*FIXME*/
     ret = lseek(fd, offset, SEEK_SET);
     ret = read(fd, buf, len);
-    if (ret<0) {
+    if (ret == ) {
+        s.SetEndOfFile();
+    } else if (ret<0) {
         s.SetIOError(ret);
     }
     return s;
@@ -72,8 +74,8 @@ Status ReadFile(const int fd, const Offset offset, char* buf, const int len) {
 Status GetFileLast(const int fd, Offset *offset)
 {
     Status s;
-    ret = lseek(fd, 0, SEEK_SET);
-    off = lseek(fd, 0, SEEK_END);
+    int ret = lseek(fd, 0, SEEK_SET);
+    int off = lseek(fd, 0, SEEK_END);
     *offset = off;
     return s;
 }

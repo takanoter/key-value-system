@@ -6,6 +6,7 @@
 #define KVS_ENGINE_INCLUDE_OPTIONS_H_
 
 #include <stddef.h>
+#include <string>
 
 /*FIXME options will be virtual class in the future to support memory-engine*/
 namespace kvs {

@@ -3,14 +3,19 @@
     > Author: takanoter@gmail.com
 */
 
+#ifndef KVS_ENGINE_INCLUDE_ITEM_H_
+#define KVS_ENGINE_INCLUDE_ITEM_H_
+
 #include <stdio.h>
+#include <stdlib.h>
+
 #include "kvs_status.h"
 #include "kvs_slice.h"
-#include "configure.h"
 #include "posix.h"
 
 namespace kvs {
 
+const int CONFIGURE_ITEM_SIZE=32;
 //SOLID black item layout
 struct BLACK_ITEM {
     char name[CONFIGURE_ITEM_SIZE - sizeof(Offset)];
@@ -19,7 +24,7 @@ struct BLACK_ITEM {
 };
 
 //SOLID visual item layout: name:property
-struct VIRSUAL_ITEM {
+struct VISUAL_ITEM {
     char buf[CONFIGURE_ITEM_SIZE];
 };
 
@@ -51,7 +56,7 @@ class ITEM {
     void operator=(const ITEM& s);
   
 
-    ITEM(const Slice& k, const Offset length, char* bufffer, int buffer_size) {
+    ITEM(const Slice& k, const Offset length, char* buffer, int buffer_size) {
         type = black;
         key = k;
         len = length;
@@ -68,7 +73,7 @@ class ITEM {
         buf_size = 0;
     }
 
-    ITEM(const char* buffer, int buffer_size) {
+    ITEM(char* buffer, int buffer_size) {
         int i;
         for (i=0; i<buffer_size; i++) {
             if (':' == buffer[i]) break;
@@ -80,7 +85,7 @@ class ITEM {
             Offset length = black_item->length;
             char* buffer = NULL;
             if (OffsetFeb31 != length) {
-                buffer = (char*)malloc(length);
+                buffer = (char*)malloc((size_t)length);
             }
 
             type = black;
@@ -91,7 +96,7 @@ class ITEM {
         } else {
             //visual item
             Slice k(buffer, i);
-            Slice v(buffer[i+1]);
+            Slice v(&buffer[i+1]);
 
             type = virsual; 
             key = k;
@@ -116,13 +121,13 @@ class ITEM {
             memset(&item, 0 ,sizeof(item));
             strcpy(&item.name[0], key.data());
             item.length = len;
-            memcpy(head, &item, sizeof(item);
+            memcpy(head, &item, sizeof(item));
         } else {
             char *p = NULL;
-            VIRTUAL_ITEM item;
+            VISUAL_ITEM item;
             memset(&item, 0, sizeof(item));
-            snprintf(&item, sizeof(item), "%s:%s\n", key.data(), value.data());
-            memcpy(head, &item, sizeof(item);
+            snprintf((char*)(&item), sizeof(item), "%s:%s\n", key.data(), value.data());
+            memcpy(head, &item, sizeof(item));
         }
         return s;
     }
@@ -146,3 +151,4 @@ inline void ITEM::operator=(const ITEM& item) {
 
 }; // namespace kvs
 
+#endif // KVS_ENGINE_INCLUDE_ITEM_H_

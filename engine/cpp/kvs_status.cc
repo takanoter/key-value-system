@@ -17,6 +17,14 @@ void Status::SetNotExist() {
     code_ = kNotExist;
 }
 
+void Status::SetEndOfFile() {
+    if (NULL == msg_) {
+        msg_ = new char[STATUS_MSG_SIZE];
+    }
+    sprintf(msg_, "End of file.");
+    code_ = kEndOfFile;
+}
+
 void Status::SetExist() {
     if (NULL == msg_) {
         msg_ = new char[STATUS_MSG_SIZE];
