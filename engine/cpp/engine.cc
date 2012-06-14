@@ -23,12 +23,12 @@ Status HashEngine::Create(const EngineOptions& opt, const std::string& name) {
     key_length_ = opt.key_length; 
     arrange_.hole_horizon = opt.hole_horizon;
 
-    Status s = ConfsBorn(opt.path);
+    Status s = ConfsBorn(opt.path, opt.index_head_size);
     if (!s.ok()) return s;
     s = ConfsSolid();
     if (!s.ok()) return s;
 
-    s = index_.Born(opt.index_head_size, opt.key_length);
+    s = index_.Born(meta_conf_, opt.index_head_size);
     if (!s.ok()) return s;
 
     s = space_.Born(data_conf_);
@@ -77,7 +77,7 @@ rollback:
 
 Status HashEngine::Get(const GetOptions& opt, const Slice& k, std::string* v) {
     Offset off, len;
-    Status s = index_.search(k, off, len);
+    Status s = index_.search(k, &off, &len);
     if (!s.ok()) return s;
     if (opt.only_check) return s;  //s.ok() == key is exist
     s = space_.Read(off, len, v);
@@ -135,7 +135,7 @@ Status HashEngine::CancelArrange() {
 }
 
 /************  private  **********************************************/
-Status HashEngine::ConfsBorn(const std::string path) {
+Status HashEngine::ConfsBorn(const std::string path, const int index_head_size) {
     Status s;
     char filename[1024];
 
@@ -150,7 +150,7 @@ Status HashEngine::ConfsBorn(const std::string path) {
     std::string conffile(filename);
     s = conf_conf_.Create(conffile);
     if (!s.ok()) return s;
-    s = FillConfConfigure(conf_conf_);
+    s = FillConfConfigure(conf_conf_, index_head_size);
     if (!s.ok()) return s;
      
     snprintf(filename, 1024, "%s/%s", path.c_str(), "data");
@@ -227,7 +227,7 @@ Status HashEngine::FillDataConfigure(Configure& data) {
     return s;
 }
 
-Status HashEngine::FillConfConfigure(Configure& conf) {
+Status HashEngine::FillConfConfigure(Configure& conf, const int index_head_size) {
     Slice key;
     std::string value;
 
@@ -244,8 +244,7 @@ Status HashEngine::FillConfConfigure(Configure& conf) {
     if (!s.ok()) return s;
  
     key("index_head_size");
-    int headsize = index_.GetHeadSize();
-    value(headsize);
+    value(index_head_size);
     s = conf.NewItem(key, value);
     if (!s.ok()) return s;
 
@@ -264,39 +263,53 @@ Status HashEngine::FillMetaConfigure(Configure& meta) {
     s = meta.NewItem(key, cabinet_name_);
     if (!s.ok()) return s;
 
-    key("key_len");
+    key("key_length");
     value(key_length_);
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
 
+    //dynamic, but static copy
     key("id");
     value(id_);
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
  
+    //dynamic, but static copy
     key("cur_data_file");
     value(cur_data_file_);
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
 
+    //dynamic, but static copy
     key("health");
     value(health_.ToString());
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
 
-/*
-    key("space_last_offset");
-    value(space_.GetLast()); //FIXME: OffsetFeb31
+    //dynamic, but static copy
+    key("index_horizon");
+    value(0); 
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
-*/
+
+    //dynamic, but static copy
+    key("index_free_slot_horizon");
+    value(0); 
+    s = meta.NewItem(key, value);
+    if (!s.ok()) return s;
  
     key("index_free_slot");
     s = meta.NewItem(key, INDEX_FREE_SLOT_FIX_SIZE);
     if (!s.ok()) return s;
 
     key("index");
-    s = meta.NewItem(key, INDEX_FIX_SIZE);
+    if (8 == key_length_) {
+        s = meta.NewItem(key, INDEX_FIX_8_SIZE);
+    } else if (16 == key_length_) {
+        s = meta.NewItem(key, INDEX_FIX_16_SIZE);
+    } else {
+        s.SetInvalidParam("key_length", key_length_);
+    }
     if (!s.ok()) return s;
     
     return s;
@@ -317,6 +330,16 @@ Status HashEngine::UpdateConfigure() {
 
     key("health");
     value(health_.ToString());
+    s = meta_conf_.Set(key, value);
+    if (!s.ok()) return s;
+
+    key("index_horizon");
+    value(index_.GetIndexHorizon());
+    s = meta_conf_.Set(key, value);
+    if (!s.ok()) return s;
+
+    key("index_free_slot_horizon");
+    value(health_.GetIndexFreeSlotHorizon());
     s = meta_conf_.Set(key, value);
     if (!s.ok()) return s;
 

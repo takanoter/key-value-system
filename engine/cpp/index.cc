@@ -9,123 +9,83 @@
 
 namespace kvs {
 
-HashEngine::HashEngine() {
+INDEX::INDEX() {
     //init Writer or sth else memory
 }
 
-HashEngine::~HashEngine() {
+INDEX::~INDEX() {
 }
 
-Status HashEngine::Create(const EngineOptions& opt, const std::string& name) {
-  fs_path_ = opt.path;
-  cabinet_version_ = GetEngineVersion();
-  cabinet_name_ = name;
-  arrange_.hole_horizon = opt.hole_horizon;
-
-  Status s = ConfsBorn(opt.path);
-  if (!s.ok()) return s;
-  
-  s = index_.Born(opt.index_head_size);
-  if (!s.ok()) return s;
-
-  s = space_.Born();
-  if (!s.ok()) return s;
-
-  s = health_.Born();
-  if (!s.ok()) return s;
-  return s;
-}
-
-Status HashEngine::Open(const EngineOptions& opt) {
-  Status s = ConfsCheckLoad(opt.path);
-  if (!s.ok()) return s;
-  s = index_.Load(meta_conf_);
-  if (!s.ok()) return s;
-  s = space_.Load(meta_conf_);
-  if (!s.ok()) return s;
-  return s;
-}
-
-Status HashEngine::Close() {
-  Status s = Solid();
-  if (!s.ok()) return s;
-  s = data_conf_.Solid();
-  return s;
-}
-
-Status HashEngine::Put(const PutOptions& opt, const Slice& k, const Slice& v) {
-    //id_++;
-    Offset len;
-    Offset off = space_.GetSpace();  //no limit control, out of limit happed in writter.
-    Status s = index_.Insert(opt.cover, k, off, id_);
+Status INDEX::Load(const Configure& conf, const int index_head_size) {
+    s = Init(conf, index_head_size);
     if (!s.ok()) return s;
-    s = writer_.Write(off, id_, k, v, len, opt.sync); 
-    if (!s.ok()) goto rollback;
-    space_.SetUse(len);
-    return s;
+    for (i=0; i<item_horizon_; i++) {
+        if (8 == key_len) 
 
-rollback:
-    if (opt.cover) index_.Backward(); //FIXME only can back one step, may be we can use id_;
-    return s;
-}
 
-Status HashEngine::Get(const GetOptions& opt, const Slice& k, std::string* v) {
-    Offset off, len;
-    Status s = index_.Search(k, off, len);
-    if (!s.ok()) return s;
-    if (opt.only_check) return s;  //s.ok() == key is exist
-    s = writer_.Read(off, len, v);
-    return s;
-}
-
-Status HashEngine::Delete(const Slice& k) {
-    //id++;
-    Status s = index_.Del(k);
-    //do not deal with space.
-    return s;
-}
-
-//3 files : index, data, and configure.
-//data file never need to be solid, and it should be the newest file.
-Status HashEngine::Solid() {
-    Status s;
-    index_.Save(meta_conf_);
-    space_.Save(meta_conf_);
-    if (!meta_conf_.NeedSolid() && !conf_conf_.NeedSolid()) {
-        s.SetNoNeed();
-        return s;
-    }
-
-    s = conf_conf_.Solid(); //FIXME atomic fwrite?
-    if (!s.ok()) return s;
-
-    s = meta_conf_.Solid();
-    if (!s.ok()) goto rollback;
-    return s;
-
-rollback:
-//this failed may cause index_file, configure, data_file inconsistency, 
-//these 3 files consistency will be checked when open a engine.
-// [index_id, data_id] will be recoverd in index file and configure by check data-file.
-    s = conf_conf_.Rollback();  
-    if (!s.RollbackSuccess()) { //rollback success but solid failed.
-         ; //do nothing , do not try again.
     }
     return s;
 }
 
-Status HashEngine::Arrange(const ArrangeOptions& opt) {
+Status INDEX::Init(const Configure& conf, const int index_head_size) {
+    Slice k;
+    std::string p;
+    char* buf = NULL;
+
+    k.data("key_length");
+    s = conf.Get(key, &p);
+    if (!s.ok()) return s;
+    key_len_ = atoi(p.c_str());
+    assert((key_len == 8) || (key_len == 16));
+
+    k.data("index");
+    item_ = conf.GetBuffer(key); 
+    assert(item_ != NULL);
+    item_num_ = INDEX_ITEM_NUM;
+    k.data("index_horizon");
+    s = conf.Get(key, &p);
+    if (!s.ok()) return s;
+    item_horizon_ = atoi(p.c_str());
+
+    hash_head_ = malloc(index_head_size * sizeof(Offset));
+    hash_head_size_ = index_head_size;
+
+    k.data("index_free_slot");
+    buf = conf.GetBuffer(key);
+    assert(buf != NULL);
+    k.data("index_free_slot_horizon");
+    s = conf.Get(key, &p);
+    if (!s.ok()) return s;
+    Offset free_slots_horizon = atoi(p.c_str());
+    free_slots_.Fill(buf, INDEX_FREE_SLOT_FIX_SIZE, free_slots_horizon);
+
+    rollback_item = NULL;
+    last_operation_ = OP_NOTHING; 
+    return s;
+}
+
+Status INDEX::Born(const Configure& conf, const int index_head_size) {
+    s = Init(conf, index_head_size);
+    if (!s.ok()) return s;
+    assert(item_horizon_==0);
+    return s;
+}
+
+Status INDEX::Search(const Slice& key, Offset* off, Offset* len) {
+
 
 }
 
-Status HashEngine::GetArrangeProgress(const int& prog) {
+Status INDEX::Insert(const bool cover, const Slice& key, Offset off, Offset id_) {
 
 
 }
 
-Status HashEngine::CancelArrange() {
+Status Del(const Slice& key) {
+
 
 }
+
 
 };  // namespace kvs 
 
