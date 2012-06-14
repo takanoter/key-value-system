@@ -26,6 +26,7 @@ class SPACE {
     Status Born(Configure& data_conf);
     Status Read(const Offset offset, const Offset length, std::string* value);
     Status Write(const Offset offset, const Offset id, const Slice& key, const Slice& value, const bool sync);
+    Offset CalLength(const Slice& key, const Slice& value) {
 
     Offset GetSpace();
 

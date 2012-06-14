@@ -15,7 +15,7 @@ namespace kvs {
 Status CONFIGURE::Get(const Slice& key, std::string* property) {
     ITEM_MAP::iterator it = items_.find(key.data());
     if (it == items_.end()) {
-        s.SetNotFound();
+        s.SetNotExist();
     } else {
         *property = items_[key.data()].value;
     }
@@ -27,7 +27,7 @@ Status CONFIGURE::Set(const Slice& key, const Slice& property) {
     Status s;
     ITEM_MAP::iterator it = items_.find(key.data());
     if (it == items_.end()) {
-        s.SetNotFound();
+        s.SetNotExist();
     } else {
         ITEM item(key, property);
         items_[key.data()]=item;

@@ -62,6 +62,10 @@ Status SPACE::Write(const Offset offset, const Offset id, const Slice& key, cons
     SetUse(len);
 }
 
+Offset SPACE::CalLength(const Slice& key, const Slice& value) {
+    return sizeof(Offset)/*id*/ + key.size() + sizeof(Offset)/*value.size()*/ + value.size();
+}
+
 Offset SPACE::GetSpace() {
     return last_offset_t;
 }

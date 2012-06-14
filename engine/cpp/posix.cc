@@ -20,7 +20,7 @@ Status CreateFile(const std::string pathname, int *fd) {
     Status s;
     *fd = open(pathname.c_str(), O_RDWR | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
     if (*fd < 0) {
-        s.SetIOError();
+        s.SetIOError(*fd);
     }
     return s;
 }

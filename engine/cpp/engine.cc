@@ -64,7 +64,8 @@ Status HashEngine::Put(const PutOptions& opt, const Slice& k, const Slice& v) {
     //id_++;
     Offset len;
     Offset off = space_.GetSpace();  //no limit control, out of limit happed in writter.
-    Status s = index_.Insert(opt.cover, k, off, id_);
+    Offset len = space_.CalLength(k,v);
+    Status s = index_.Insert(opt.cover, k, off, len);
     if (!s.ok()) return s;
     s = space_.Write(off, id_, k, v, opt.sync); 
     if (!s.ok()) goto rollback;

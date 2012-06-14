@@ -45,6 +45,12 @@ class ITEM {
     int buf_size;
   
   public:
+    ITEM() {
+    }
+
+    void operator=(const ITEM& s);
+  
+
     ITEM(const Slice& k, const Offset length, char* bufffer, int buffer_size) {
         type = black;
         key = k;
@@ -129,6 +135,14 @@ class ITEM {
     }
 }; // class ITEM
 
+inline void ITEM::operator=(const ITEM& item) {
+    type = item.type;
+    key = item.key;
+    value = item.value;
+    len = item.len;
+    buf = item.buf;
+    buf_size = item.buf_size;
+}
 
 }; // namespace kvs
 

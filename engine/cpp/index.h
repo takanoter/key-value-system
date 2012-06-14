@@ -30,7 +30,7 @@ struct INDEX_ITEM_8 {
 };
 
 struct INDEX_ITEM_16 {
-    Offset key1,key2;
+    Offset key[2];
     int length;
     Offset offset;
     Offset left,right;
@@ -55,9 +55,17 @@ class FREE_SLOT {
         horizon_ = horizon;
     }
 
-    Offset Size();
-    Offset Horizon();
-    Offset TotalSize();
+    Offset Pop() {
+        Offset id = slots_[horizon_];
+        if (0 == horizon_) return OffsetFeb31;
+        horizon_--;
+        return id;
+    }
+
+    Push(const Offset id) {
+        slots_[horizon_] = id;
+        horizon_ ++;
+    }
 
   public:
     void* slots_;
@@ -74,19 +82,19 @@ class INDEX {
     INDEX() {};
     ~INDEX();
 
-    Status Search(const Slice& key, Offset* off, Offset* len);
-    Status Insert(const bool cover, const Slice& key, Offset off, Offset id_);
-    Status Del(const Slice& key);
+    Status Search(const Slice& key, Offset* off, Offset* len) {
+    Status Insert(const bool cover, const Slice& key, const Offset off, const Offset len) {
+    Status Del(const Slice& key) {
 
-    Status Load(const Configure& conf_, const int index_head_size);
-    Status Born(const Configure& conf_, const int index_head_size);
+    Status Load(const Configure& conf, const int index_head_size) {
+    Status Born(const Configure& conf, const int index_head_size) {
 
     Status Backward(); //FIXME only can back one step, may be we can use id_;
 
   private:
     int key_len_;
 
-    void* item_; //real index items
+    char* item_; //real index items
     Offset* hash_head_; //hash head
     int item_num_; //use default: INDEX_ITEM_NUM
     int hash_head_size_;
@@ -95,11 +103,37 @@ class INDEX {
     FREE_SLOT free_slots_; //free slot
 
     //Rollback
-    void *rollback_item_;
+    char* rollback_item_;
     OPERATION last_operation_;
 
+    //buffer
+    INDEX_ITEM_8 item_8_;
+    INDEX_ITEM_16 item_16_;
+
   private:
-    Status Init(const Configure& conf_, const int index_head_size);
+    Status Init(const Configure& conf, const int index_head_size);
+
+    Offset BSTSearchId(const char* item);
+    Status BSTInsert(const bool cover, const char* item);
+    Status BSTDelete(const char* item);
+
+    Offset* GetBSTRightNodePtr(const Offset node_id);
+    Offset* GetBSTLeftNodePtr(const Offset node_id);
+    Offset GetBSTRightNodeId(const Offset node_id);
+    Offset GetBSTLeftNodeId(const Offset node_id);
+    int BSTNodeCmp(char *item, const Offset node_id);
+
+    Offset GetHTId(char *item);
+    Offset GetNodeLength(const Offset node_id);
+    Offset GetNodeOffset(const Offset node_id);
+
+    char* FillItem(const Slice& key);
+    char* FillItem(const Slice& key, const Offset offset, const Offset length);
+    void FillNewNode(const Offset node_id, char *item);
+    char* GetItemFromBSTNode(const Offset node);
+
+    void PushFreeNode(const Offset node_id);
+    Offset PopFreeNode();
 
 }; // class INDEX
 
