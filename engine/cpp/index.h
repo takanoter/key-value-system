@@ -17,8 +17,8 @@ namespace kvs {
 /*FIXME: template*/
 const int INDEX_ITEM_8_SIZE = 8/*key*/+4/*length*/+8/*offset*/+8*2/*tree*/;
 const int INDEX_ITEM_16_SIZE = 16/*key*/+4/*length*/+8/*offset*/+8*2/*tree*/;
-const int INDEX_ITEM_NUM = 1024*1024*10;
-const Offset INDEX_FREE_SLOT_FIX_NUM = 1024*1024;
+const int INDEX_ITEM_NUM = 1024; /*1024*1024*10*/
+const Offset INDEX_FREE_SLOT_FIX_NUM = 1024; /*1024*1024*/
 const Offset INDEX_FREE_SLOT_FIX_SIZE = INDEX_FREE_SLOT_FIX_NUM * sizeof(Offset);
 const Offset INDEX_FIX_8_SIZE = INDEX_ITEM_NUM * INDEX_ITEM_8_SIZE;
 const Offset INDEX_FIX_16_SIZE = INDEX_ITEM_NUM * INDEX_ITEM_16_SIZE;
@@ -90,7 +90,9 @@ enum OperationCode {
 
 class INDEX {
   public:
-    INDEX() {};
+    INDEX() {
+
+    };
     ~INDEX();
 
     Status Search(const Slice& key, Offset* off, Offset* len);
@@ -100,7 +102,7 @@ class INDEX {
     Status Load(CONFIGURE& conf, const int index_head_size);
     Status Born(CONFIGURE& conf, const int index_head_size);
 
-    Status Backward(); //FIXME only can back one step, may be we can use id_;
+    //Status Backward(); //FIXME only can back one step, may be we can use id_;
     Offset GetIndexFreeSlotHorizon();
     Offset GetIndexHorizon();
 

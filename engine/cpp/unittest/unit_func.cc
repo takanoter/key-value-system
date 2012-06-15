@@ -63,3 +63,104 @@ Status FillDataConfigure(CONFIGURE& data) {
 
     return s;
 }
+
+Status FillMetaConfigure(CONFIGURE& meta) {
+    Slice key;
+    Status s;
+    std::string value;
+    char buf[32];
+
+    key.Set("version");
+    s = meta.NewItem(key, "cabinet_version_");
+    if (!s.ok()) return s;
+
+    key.Set("name");
+    s = meta.NewItem(key, "cabinet_name_");
+    if (!s.ok()) return s;
+
+    key.Set("key_length");
+    memset(buf, 0, sizeof(buf));
+    int key_length_ = 8;
+    sprintf(buf, "%d", key_length_);
+    value = buf;
+    s = meta.NewItem(key, value);
+    if (!s.ok()) return s;
+
+    //dynamic, but static copy
+    key.Set("id");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", 0);
+    value = buf;
+    s = meta.NewItem(key, value);
+    if (!s.ok()) return s;
+ 
+    //dynamic, but static copy
+    key.Set("cur_data_file");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", 0);
+    value = buf;
+    s = meta.NewItem(key, value);
+    if (!s.ok()) return s;
+
+    //dynamic, but static copy
+    key.Set("health");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", 0);
+    value = buf;
+    s = meta.NewItem(key, value);
+    if (!s.ok()) return s;
+
+    //dynamic, but static copy
+    key.Set("index_horizon");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", 0);
+    value = buf;
+    s = meta.NewItem(key, value);
+    if (!s.ok()) return s;
+
+    //dynamic, but static copy
+    key.Set("index_free_slot_horizon");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", 0);
+    value = buf;
+    s = meta.NewItem(key, value);
+    if (!s.ok()) return s;
+ 
+    key.Set("index_free_slot");
+    s = meta.NewItem(key, INDEX_FREE_SLOT_FIX_SIZE);
+    if (!s.ok()) return s;
+
+    key.Set("index");
+    if (8 == key_length_) {
+        s = meta.NewItem(key, INDEX_FIX_8_SIZE);
+    } else if (16 == key_length_) {
+        s = meta.NewItem(key, INDEX_FIX_16_SIZE);
+    } else {
+        s.SetInvalidParam("key_length", key_length_);
+    }
+    if (!s.ok()) return s;
+    
+    return s;
+}
+
+Status UpdateMetaConfigure(CONFIGURE& meta_conf, Offset index_horizon, Offset index_free_slot_horizon) {
+    Slice key;
+    char buf[32];
+    std::string value;
+
+    key.Set("index_horizon");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%lld", index_horizon);
+    value = buf;
+    Status s = meta_conf.Set(key, value);
+    if (!s.ok()) return s;
+
+    key.Set("index_free_slot_horizon");
+    memset(buf, 0, sizeof(buf));
+    sprintf (buf, "%lld", index_free_slot_horizon);
+    value = buf;
+    s = meta_conf.Set(key, value);
+    if (!s.ok()) return s;
+
+    return s;
+}

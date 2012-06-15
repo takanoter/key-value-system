@@ -1,6 +1,6 @@
-1.Create New Conf
-2.Load conf
-3.Create New Conf + Load index/space, insert,etc.
-4.Load[3]
+1.Create Conf, Load Conf.
+2.Create IndexConf, Load INDEX, insert+search, Solid.  LoadIndexConf.
+3.Create DataConf,  Load SPACE, insert+search, Solid.  LoadDataConf.
+4.Total
 
 

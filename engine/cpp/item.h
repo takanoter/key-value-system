@@ -30,7 +30,7 @@ struct VISUAL_ITEM {
 
 
 enum ITEM_TYPE {
-    virsual = 0, 
+    visual = 0, 
     black = 1,
 };
 
@@ -58,16 +58,16 @@ class ITEM {
 
     ITEM(const Slice& k, const Offset length, char* buffer, int buffer_size) {
         type = black;
-        key = k;
+        key = k.data();
         len = length;
         buf = buffer;
         buf_size = buffer_size;
     }
 
     ITEM(const Slice& k, const Slice& v) {
-        type = virsual;
-        key = k;
-        value = v;
+        type = visual;
+        key = k.data();
+        value = v.data();
         len = 0;
         buf = NULL;
         buf_size = 0;
@@ -81,7 +81,6 @@ class ITEM {
         if (i==buffer_size) {
             //black item
             BLACK_ITEM *black_item = (BLACK_ITEM*) buffer;
-            Slice k(black_item->name);
             Offset length = black_item->length;
             char* buffer = NULL;
             if (OffsetFeb31 != length) {
@@ -89,18 +88,15 @@ class ITEM {
             }
 
             type = black;
-            key = k;
+            key = black_item->name;
             len = length;
             buf = buffer;
             buf_size = buffer_size;
         } else {
             //visual item
-            Slice k(buffer, i);
-            Slice v(&buffer[i+1]);
-
-            type = virsual; 
-            key = k;
-            value = v;
+            type = visual; 
+            key.assign(buffer, i);
+            value.assign(&buffer[i+1]);
             len = 0;
             buf = NULL;
             buf_size = buffer_size;
@@ -108,9 +104,11 @@ class ITEM {
     }
 
     ~ITEM() {
+/*
         if (NULL != buf) {
             free(buf);
         }
+*/
     }
 
     Status Serialize(char* head, const int head_size) {

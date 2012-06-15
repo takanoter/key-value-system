@@ -11,7 +11,7 @@
 namespace kvs {
 
 INDEX::~INDEX() {
-    if (hash_head_ != NULL) free(hash_head_);
+    //if (hash_head_ != NULL) free(hash_head_);
 }
 
 Status INDEX::Load(CONFIGURE& conf, const int index_head_size) {

@@ -23,10 +23,10 @@ class ENGINE {
 //                        ENGINE** engineptr);
 
     ENGINE() {};
-    virtual ~ENGINE();
+    virtual ~ENGINE() ;
 
     virtual Status Create(const EngineOptions& options, const std::string& name) = 0;
-    virtual Status Open(const EngineOptions& options) = 0; 
+    virtual Status Open(EngineOptions& options) = 0; 
     virtual Status Close() = 0;
 
     virtual Status Put(const PutOptions& options, 

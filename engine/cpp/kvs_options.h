@@ -57,7 +57,12 @@ struct EngineOptions {
   int index_head_size;
   int key_length;
 
-  EngineOptions();
+  EngineOptions()
+      : hole_horizon(50.0),
+        path("my_data"),
+        index_head_size(1024),
+        key_length(8) {
+  }
 };
 
 };  // namespace kvs

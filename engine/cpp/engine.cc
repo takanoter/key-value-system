@@ -9,12 +9,20 @@
 
 namespace kvs {
 
+/*
 HashEngine::HashEngine() {
     //init Writer or sth else memory
 }
 
 HashEngine::~HashEngine() {
 }
+*/
+
+/*
+ENGINE::~ENGINE() {
+
+}
+*/
 
 Status HashEngine::Create(const EngineOptions& opt, const std::string& name) {
     fs_path_ = opt.path;
@@ -73,7 +81,7 @@ Status HashEngine::Put(const PutOptions& opt, const Slice& k, const Slice& v) {
     return s;
 
 rollback:
-    if (opt.cover) index_.Backward(); //FIXME only can back one step, may be we can use id_;
+    //if (opt.cover) index_.Backward(); //FIXME only can back one step, may be we can use id_;
     return s;
 }
 

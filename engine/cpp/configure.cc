@@ -63,6 +63,7 @@ Status CONFIGURE::Set(const ITEM& item) {
 Status CONFIGURE::NewItem(const Slice& key, const Offset len) {
     Status s;
     char* buf = (char*) malloc(len);
+    printf ("%s--%lld\n", key.data(), len);
     ITEM item(key, len, buf, len);
     std::string k = key.data();
     items_.erase(k);
@@ -116,7 +117,7 @@ Status CONFIGURE::Solid() {
     Status s;
     ITEM_MAP::iterator it;
     if (blank_) {
-        Offset off;
+        Offset off = 0;
         std::list<ITEM> black_items;
         std::list<ITEM> last_items;
         for (it = items_.begin(); it != items_.end(); it++) {
@@ -216,7 +217,7 @@ Status CONFIGURE::AppendItem(ITEM& item, Offset *offset) {
 
 Status CONFIGURE::InjectItem(ITEM& item) {
     Status s;
-    Offset off;
+    Offset off = 0;
     s = SearchItemOffset(item, &off);
     if (!s.ok()) return s;
     s = AppendItem(item, &off);

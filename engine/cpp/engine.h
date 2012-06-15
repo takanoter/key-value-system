@@ -8,7 +8,7 @@
 #ifndef KVS_ENGINE_INCLUDE_HASH_ENGINE_H_
 #define KVS_ENGINE_INCLUDE_HASH_ENGINE_H_
 
-#include "kvs_engine.h"
+//#include "kvs_engine.h"
 #include "kvs_status.h"
 #include "configure.h"
 #include "index.h"
@@ -17,23 +17,23 @@
 
 namespace kvs {
 
-class HashEngine : public ENGINE {
+class HashEngine /*: public ENGINE */{
   public:
-    HashEngine();
-    virtual ~HashEngine();
+    HashEngine() {};
+    ~HashEngine() {};
 
-    virtual Status Create(const EngineOptions& options, const std::string& name);
-    virtual Status Open(EngineOptions& options);
-    virtual Status Close();
+    Status Create(const EngineOptions& options, const std::string& name);
+    Status Open(EngineOptions& options);
+    Status Close();
 
     // Implementations of the Engine interface
-    virtual Status Put(const PutOptions&, const Slice& key, const Slice& value);
-    virtual Status Get(const GetOptions&, const Slice& key, std::string* value);
-    virtual Status Delete(const Slice& key);
-    virtual Status Solid();
-    virtual Status Arrange(const ArrangeOptions&);
-    virtual Status GetArrangeProgress(const int& progress);
-    virtual Status CancelArrange();
+    Status Put(const PutOptions&, const Slice& key, const Slice& value);
+    Status Get(const GetOptions&, const Slice& key, std::string* value);
+    Status Delete(const Slice& key);
+    Status Solid();
+    Status Arrange(const ArrangeOptions&);
+    Status GetArrangeProgress(const int& progress);
+    Status CancelArrange();
 
   private:
     //*FIXME LOCK LOCK LOCK
