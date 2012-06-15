@@ -63,7 +63,7 @@ Status ReadFile(const int fd, const Offset offset, char* buf, const int len) {
     /*FIXME*/
     ret = lseek(fd, offset, SEEK_SET);
     ret = read(fd, buf, len);
-    if (ret == ) {
+    if (0 == ret) {
         s.SetEndOfFile();
     } else if (ret<0) {
         s.SetIOError(ret);

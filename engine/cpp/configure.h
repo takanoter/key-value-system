@@ -20,8 +20,8 @@ typedef std::map<std::string, ITEM> ITEM_MAP;
 class CONFIGURE {
   public:
     CONFIGURE() 
-        : need_solid(false),
-          fd(-1) {
+        : need_solid_(false),
+          fd_(-1) {
     };
 
     ~CONFIGURE() {
@@ -36,6 +36,8 @@ class CONFIGURE {
     char*  GetBuffer(const Slice& key);
     Status Load(const std::string& pathname);
     Status Create(const std::string& pathname);
+    Status FetchLastOffset(Offset *off);
+    int const GetFD();
 
   private:
     ITEM_MAP items_;
@@ -51,12 +53,11 @@ class CONFIGURE {
   private:
     Status NewItem(const ITEM& item);
     Status Set(const ITEM& item);
-    Status AppendItem(const ITEM& item, Offset *offset);
-    Status InjectItem(const ITEM& item);
+    Status AppendItem(ITEM& item, Offset *offset);
+    Status InjectItem(ITEM& item);
     void   NextOffset(const ITEM& item, Offset *offset);
-    Status FetchLastOffset(Offset *off);
     Status FetchItemBuffer(const Offset off);
-    Status SearchItemOffset(const ITEM& item, Offset* offset);
+    Status SearchItemOffset(ITEM& item, Offset* offset);
 //    Status GetItemOffsetBlack(const Slice& key, Offset* offset); 
 }; // class CONFIGURE
 

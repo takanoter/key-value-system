@@ -4,6 +4,7 @@
 */
 
 #include <stdio.h>
+#include <list>
 #include "kvs_status.h"
 #include "kvs_slice.h"
 #include "item.h"
@@ -14,11 +15,14 @@ namespace kvs {
 
 //Memory&Visual Only
 Status CONFIGURE::Get(const Slice& key, std::string* property) {
+    Status s;
     ITEM_MAP::iterator it = items_.find(key.data());
+    ITEM item;
     if (it == items_.end()) {
         s.SetNotExist();
     } else {
-        *property = items_[key.data()].value;
+        item = items_[key.data()];
+        *property = item.value.data();
     }
     return s;
 }
@@ -47,7 +51,7 @@ Status CONFIGURE::Set(const ITEM& item) {
 //malloc in here
 Status CONFIGURE::NewItem(const Slice& key, const Offset len) {
     Status s;
-    char* buf = malloc(len);
+    char* buf = (char*) malloc(len);
     ITEM item(key, len, buf, len);
     items_[key.data()] = item;
     return s;
@@ -55,7 +59,7 @@ Status CONFIGURE::NewItem(const Slice& key, const Offset len) {
 
 Status CONFIGURE::NewItem(const Slice& key) {
     Status s;
-    ITEM item(key, OffsetNotExist, NULL, 0);
+    ITEM item(key, OffsetFeb31, NULL, 0);
     items_[key.data()] = item;
     return s;
 }
@@ -90,6 +94,7 @@ Status CONFIGURE::Solid() {
     Status s;
     ITEM_MAP::iterator it;
     if (blank_) {
+        Offset off;
         std::list<ITEM> black_items;
         std::list<ITEM> last_items;
         for (it = items_.begin(); it != items_.end(); it++) {
@@ -114,13 +119,13 @@ Status CONFIGURE::Solid() {
 
         s = FetchLastOffset(&last_offset_);
         if (!s.ok()) {
-           last_offset_t = OffsetFeb31;  
+           last_offset_ = OffsetFeb31;  
            return s;
         }
         blank_ = false;
     } else {
         for (it = items_.begin(); it != items_.end(); it++) {
-            s = InjectItem(item);
+            s = InjectItem(it->second);
             if (!s.ok()) return s;
         }
     }
@@ -169,14 +174,14 @@ Status CONFIGURE::Create(const std::string& pathname) {
 }
 
 /*****************  private  *********************************/
-Status CONFIGURE::AppendItem(const ITEM& item, Offset *offset) {
+Status CONFIGURE::AppendItem(ITEM& item, Offset *offset) {
     Status s;
     
     item.Serialize(item_buffer_, CONFIGURE_ITEM_SIZE);
-    s = WriteFile(fd_, *offset, item_buffer_, CONFIGURE_ITEM_SIZE);
+    s = WriteFile(fd_, *offset, (const char*)item_buffer_, (const int)CONFIGURE_ITEM_SIZE);
     if (!s.ok()) return s;
     if (black == item.type && OffsetFeb31 != item.len) {
-        s = WriteFile(fd_, *offset + CONFIGURE_ITEM_SIZE,  item.buf, item.len);
+        s = WriteFile(fd_, *offset + CONFIGURE_ITEM_SIZE,  (const char*)item.buf, (const int)item.len);
         if (!s.ok()) return s;
         *offset += item.len;
     }
@@ -186,14 +191,13 @@ Status CONFIGURE::AppendItem(const ITEM& item, Offset *offset) {
     return s;
 }
 
-Status CONFIGURE::InjectItem(const ITEM& item) {
+Status CONFIGURE::InjectItem(ITEM& item) {
     Status s;
     Offset off;
     s = SearchItemOffset(item, &off);
     if (!s.ok()) return s;
-    s = AppendItem(item, off);
+    s = AppendItem(item, &off);
     if (!s.ok()) return s;
-
     return s;
 }
 
@@ -201,7 +205,7 @@ Status CONFIGURE::InjectItem(const ITEM& item) {
 void CONFIGURE::NextOffset(const ITEM& item, Offset *offset) {
     *offset += CONFIGURE_ITEM_SIZE;
     if (item.type == black)  *offset += item.len;
-    if (OffsetFeb31 == item.len) *ffset = OffsetFeb31;
+    if (OffsetFeb31 == item.len) *offset = OffsetFeb31;
     return;
 }
 
@@ -212,16 +216,15 @@ Status CONFIGURE::FetchLastOffset(Offset *off) {
 
 Status CONFIGURE::FetchItemBuffer(const Offset off)
 {
-    Offset off = 0;
     Status s;
-    memset(item_buffer_, 0, sizeof(item_buffer));
+    memset(item_buffer_, 0, sizeof(item_buffer_));
     s = ReadFile(fd_, off, item_buffer_, CONFIGURE_ITEM_SIZE);
     if (!s.ok()) return s;
     return s;
 }
 
 
-Status CONFIGURE::SearchItemOffset(const ITEM& item, Offset* offset) {
+Status CONFIGURE::SearchItemOffset(ITEM& item, Offset* offset) {
     Offset off = 0; 
     Status s;
     while (!s.EndOfFile()) {
@@ -245,6 +248,9 @@ Status CONFIGURE::SearchItemOffset(const ITEM& item, Offset* offset) {
     return s;
 }
 
+int const CONFIGURE::GetFD(){
+    return fd_;
+}
 /*
 Status CONFIGURE::GetItemOffsetBlack(const Slice& key, Offset* offset) {
      Status s = GetItemOffset(key, offset);

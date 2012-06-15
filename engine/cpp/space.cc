@@ -2,22 +2,17 @@
     > File Name: space.cc
     > Author: takanoter@gmail.com
 */
-
-
-#ifndef KVS_ENGINE_INCLUDE_SPACE_H_
-#define KVS_ENGINE_INCLUDE_SPACE_H_
-
 #include <stdio.h>
 #include "kvs_status.h"
 #include "kvs_slice.h"
+#include "space.h"
 
 namespace kvs {
 
-Status SPACE::Load(Configure& data_conf) {
+Status SPACE::Load(CONFIGURE& data_conf) {
     Status s = data_conf.FetchLastOffset(&last_offset_);
     if (!s.ok()) return s;
     fd_ = data_conf.GetFD();
-    conf_ = data_conf;
 
     std::string key_len;
     s = data_conf.Get("key_length", &key_len);
@@ -26,11 +21,10 @@ Status SPACE::Load(Configure& data_conf) {
     return s;
 }
 
-Status SPACE::Born(Configure& data_conf) {
+Status SPACE::Born(CONFIGURE& data_conf) {
     Status s = data_conf.FetchLastOffset(&last_offset_);
     if (!s.ok()) return s;
     fd_ = data_conf.GetFD();
-    conf_ = data_conf;
 
     std::string key_len;
     s = data_conf.Get("key_length", &key_len);
@@ -42,7 +36,8 @@ Status SPACE::Born(Configure& data_conf) {
 Status SPACE::Read(const Offset offset, const Offset length, std::string* value) {
     Status s = ReadFile(fd_, offset, buffer_, length); 
     if (!s.ok()) return s;
-    *value(buffer[item_head_length], length - item_head_length);
+    /*FIXME*/
+    *value(buffer_[item_head_length_], length - item_head_length_);
     return s;
 }
 
@@ -50,16 +45,20 @@ Status SPACE::Write(const Offset offset, const Offset id, const Slice& key, cons
                     const bool sync) {
 //FIXME:memcpy...
     Offset len = 0;
-    memcpy(buffer_[len], &id, sizeof(id));
+    memcpy(&buffer_[len], &id, sizeof(id));
     len += sizeof(Offset);
-    memcpy(buffer_[len], key.data(), key.size());
+    memcpy(&buffer_[len], key.data(), key.size());
     len += key.size();
-    memcpy(buffer_[len], value.size(), sizeof(Offset));
+
+    Offset v_size = value.size(); 
+    memcpy(&buffer_[len], &v_size, sizeof(Offset));
     len += sizeof(Offset);
-    memcpy(buffer_[len], value.data(), value.size());
+
+    memcpy(&buffer_[len], value.data(), value.size());
     len += value.size();
-    s = WriteFile(fd_, offset, buffer_, len); 
+    Status s = WriteFile(fd_, offset, buffer_, len); 
     SetUse(len);
+    return s;
 }
 
 Offset SPACE::CalLength(const Slice& key, const Slice& value) {
@@ -67,16 +66,13 @@ Offset SPACE::CalLength(const Slice& key, const Slice& value) {
 }
 
 Offset SPACE::GetSpace() {
-    return last_offset_t;
+    return last_offset_;
 }
 
 Status SPACE::SetUse(Offset len)  {
-   last_offset_t += len;
+   last_offset_ += len;
    //data_conf不设置
    //conf_.Set("data", last_offset_t);
 }
 
-}; // class SPACE
-
 }; // namespace kvs
-#endif // KVS_ENGINE_INCLUDE_SPACE_H_

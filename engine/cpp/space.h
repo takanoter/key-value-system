@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include "kvs_status.h"
 #include "kvs_slice.h"
+#include "configure.h"
 
 namespace kvs {
 
@@ -22,18 +23,19 @@ class SPACE {
     ~SPACE() {
     };
    
-    Status Load(Configure& data_conf);
-    Status Born(Configure& data_conf);
+    Status Load(CONFIGURE& data_conf);
+    Status Born(CONFIGURE& data_conf);
     Status Read(const Offset offset, const Offset length, std::string* value);
     Status Write(const Offset offset, const Offset id, const Slice& key, const Slice& value, const bool sync);
-    Offset CalLength(const Slice& key, const Slice& value) {
+    Offset CalLength(const Slice& key, const Slice& value);
 
     Offset GetSpace();
 
   private:
     Offset last_offset_;
     int  fd_;
-    Configure& conf_;
+    //CONFIGURE& conf_;
+//    int key_len_;
     int item_head_length_;
     char buffer_[SPACE_BUFFER_SIZE];
  

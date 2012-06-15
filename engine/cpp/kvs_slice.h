@@ -27,6 +27,10 @@ class Slice {
   // Create a slice that refers to s[0,strlen(s)-1]
   Slice(const char* s) : data_(s), size_(strlen(s)) { }
 
+  void Set(const char* s) { data_ = s, size_ = strlen(s); }
+
+  void Set(const char* s, int size) { data_ = s, size_ = size; }
+
   // Return a pointer to the beginning of the referenced data
   const char* data() const { return data_; }
 

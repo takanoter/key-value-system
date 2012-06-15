@@ -4,24 +4,21 @@
 */
 //*FIXME this is a hash+tree engine.
 
-#include "kvs_engine.h"
-#include "engine.h"
+#include "kvs_status.h"
+#include "configure.h"
+#include "index.h"
 
 namespace kvs {
-
-INDEX::INDEX() {
-    //init Writer or sth else memory
-}
 
 INDEX::~INDEX() {
     if (hash_head_ != NULL) free(hash_head_);
 }
 
-Status INDEX::Load(const Configure& conf, const int index_head_size) {
-    s = Init(conf, index_head_size);
+Status INDEX::Load(CONFIGURE& conf, const int index_head_size) {
+    Status s = Init(conf, index_head_size);
     if (!s.ok()) return s;
 
-    for (i=0; i<item_horizon_; i++) {
+    for (int i=0; i<item_horizon_; i++) {
         char* item = GetItemFromBSTNode(i);
         if (NULL == item) continue;
         s = BSTInsert(true, item);
@@ -30,8 +27,8 @@ Status INDEX::Load(const Configure& conf, const int index_head_size) {
     return s;
 }
 
-Status INDEX::Born(const Configure& conf, const int index_head_size) {
-    s = Init(conf, index_head_size);
+Status INDEX::Born(CONFIGURE& conf, const int index_head_size) {
+    Status s = Init(conf, index_head_size);
     if (!s.ok()) return s;
     assert(item_horizon_==0);
     return s;
@@ -67,12 +64,13 @@ Status INDEX::Insert(const bool cover, const Slice& key, const Offset off, const
 }
 
 Status INDEX::Del(const Slice& key) {
+    Status s;
     if (key_len_ != key.size()) {
         s.SetInvalidParam("key_length", key.size());
         return s;
     }
     char* item = FillItem(key);
-    Status s = BSTDelete(item);
+    s = BSTDelete(item);
     if (!s.ok()) return s;
     return s;
 }
@@ -80,13 +78,12 @@ Status INDEX::Del(const Slice& key) {
 
 /********** private *******************************/
 
-Offset INDEX::BSTSearchId(const char* item)
+Offset INDEX::BSTSearchId(char* item)
 {
     Offset ht_id = GetHTId(item);
-    Offset node_id = hash_head_[ht_id};
-
+    Offset node_id = hash_head_[ht_id];
     while (node_id != OffsetFeb31)
-    {	
+    {
         int cmp = BSTNodeCmp(item, node_id); 
         if (cmp == 0) {
             return node_id;
@@ -96,11 +93,10 @@ Offset INDEX::BSTSearchId(const char* item)
             node_id = GetBSTRightNodeId(node_id);
         }
     }
-
     return OffsetFeb31;
 }
 
-Status INDEX::BSTInsert(const bool cover, const char* item)
+Status INDEX::BSTInsert(const bool cover, char* item)
 {
     Status s;
     Offset ht_id = GetHTId(item);
@@ -124,14 +120,14 @@ Status INDEX::BSTInsert(const bool cover, const char* item)
         }
     } 
 
-    free_node_id = PopFreeNode();
+    Offset free_node_id = PopFreeNode();
     FillNewNode(free_node_id, item);
     *pre_node_ptr = free_node_id;
 
     return s;
 }
 
-Status INDEX::BSTDelete(const char* item) {
+Status INDEX::BSTDelete(char* item) {
     Status s;
     Offset ht_id = GetHTId(item);
     Offset node_id = hash_head_[ht_id];
@@ -181,42 +177,42 @@ Status INDEX::BSTDelete(const char* item) {
 }
 
 
-Status INDEX::Init(const Configure& conf, const int index_head_size) {
+Status INDEX::Init(CONFIGURE& conf, const int index_head_size) {
     Slice k;
     std::string p;
     char* buf = NULL;
 
-    k.data("key_length");
-    s = conf.Get(key, &p);
+    k.Set((const char*)"key_length");
+    Status s = conf.Get(k, &p);
     if (!s.ok()) return s;
     key_len_ = atoi(p.c_str());
-    assert((key_len == 8) || (key_len == 16));
+    assert((key_len_ == 8) || (key_len_ == 16));
 
-    k.data("index");
-    item_ = conf.GetBuffer(key); 
+    k.Set("index");
+    item_ = conf.GetBuffer(k); 
     assert(item_ != NULL);
     item_num_ = INDEX_ITEM_NUM;
-    k.data("index_horizon");
-    s = conf.Get(key, &p);
+    k.Set("index_horizon");
+    s = conf.Get(k, &p);
     if (!s.ok()) return s;
     item_horizon_ = atoi(p.c_str());
 
     hash_head_size_ = index_head_size;
 
-    k.data("index_free_slot");
-    buf = conf.GetBuffer(key);
+    k.Set("index_free_slot");
+    buf = conf.GetBuffer(k);
     assert(buf != NULL);
-    k.data("index_free_slot_horizon");
-    s = conf.Get(key, &p);
+    k.Set("index_free_slot_horizon");
+    s = conf.Get(k, &p);
     if (!s.ok()) return s;
     Offset free_slots_horizon = atoi(p.c_str());
     free_slots_.Fill(buf, INDEX_FREE_SLOT_FIX_SIZE, free_slots_horizon);
 
-    rollback_item = NULL;
-    last_operation_ = OP_NOTHING; 
+    rollback_item_ = NULL;
+    last_operation_ = kDoNothing; 
 
     hash_head_ = (Offset*)malloc(index_head_size * sizeof(Offset));
-    for (int i=0; i<index_head_size_; i++) {
+    for (int i=0; i<hash_head_size_; i++) {
         hash_head_[i] = OffsetFeb31;
     }
          
@@ -227,11 +223,11 @@ Offset INDEX::PopFreeNode() {
     Offset node;
     node = free_slots_.Pop();
     if (OffsetFeb31 == node) {
-        if (index_horizon_ == index_size_) {
+        if (item_horizon_ == item_num_) {
             return OffsetFeb31;
         }
-        node = index_horizon_;
-        index_horizon__++;
+        node = item_horizon_;
+        item_horizon_++;
     }
     return node;
 }
@@ -243,15 +239,15 @@ void INDEX::PushFreeNode(const Offset node_id) {
         item_8[node_id].key = OffsetFeb31;
     } else if (16 == key_len_) {
         INDEX_ITEM_16* item_16 = (INDEX_ITEM_16*)item_;
-        item_16[node_id].key1 = OffsetFeb31;
-        item_16[node_id].key2 = OffsetFeb31;
+        item_16[node_id].key[0] = OffsetFeb31;
+        item_16[node_id].key[1] = OffsetFeb31;
     } else {
         // do nothing;
     }
-    free_slots.Push(node_id);
+    free_slots_.Push(node_id);
 }
 
-char* INDEX::GetItemFromBSTNode(const Offset node) {
+char* INDEX::GetItemFromBSTNode(const Offset node_id) {
     char* item = NULL;
     if (8 == key_len_) {
         INDEX_ITEM_8* item_8 = (INDEX_ITEM_8*)item_;
@@ -406,6 +402,32 @@ Offset INDEX::GetBSTLeftNodeId(const Offset node_id) {
     return OffsetFeb31;
 }
 
+void INDEX::SetBSTLeftNodeId(const Offset node_id, const Offset v) {
+    if (8 == key_len_) {
+        INDEX_ITEM_8* item_8 = (INDEX_ITEM_8*)item_;
+        item_8[node_id].left = v;
+    } else if (16 == key_len_) {
+        INDEX_ITEM_16* item_16 = (INDEX_ITEM_16*)item_;
+        item_16[node_id].left = v;
+    } else {
+        // do nothing;
+    }
+    return ;
+}
+
+void INDEX::SetBSTRightNodeId(const Offset node_id, const Offset v) {
+    if (8 == key_len_) {
+        INDEX_ITEM_8* item_8 = (INDEX_ITEM_8*)item_;
+        item_8[node_id].right= v;
+    } else if (16 == key_len_) {
+        INDEX_ITEM_16* item_16 = (INDEX_ITEM_16*)item_;
+        item_16[node_id].right= v;
+    } else {
+        // do nothing;
+    }
+    return ;
+}
+
 Offset INDEX::GetBSTRightNodeId(const Offset node_id) {
     if (8 == key_len_) {
         INDEX_ITEM_8* item_8 = (INDEX_ITEM_8*)item_;
@@ -444,6 +466,5 @@ Offset* INDEX::GetBSTRightNodePtr(const Offset node_id) {
     }
     return NULL;
 }
-
 
 };  // namespace kvs 

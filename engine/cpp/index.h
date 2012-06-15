@@ -9,6 +9,7 @@
 #include "kvs_status.h"
 #include "kvs_options.h"
 #include "kvs_slice.h"
+#include "configure.h"
 
 namespace kvs {
 
@@ -49,8 +50,8 @@ class FREE_SLOT {
     ~FREE_SLOT() {
     };
    
-    void Fill(const void* buf, const Offset size, const Offset horizon) {
-        slots_ = buf;
+    void Fill(char* buf, const Offset size, const Offset horizon) {
+        slots_ = (Offset*)buf;
         size_ = size;
         horizon_ = horizon;
     }
@@ -62,13 +63,13 @@ class FREE_SLOT {
         return id;
     }
 
-    Push(const Offset id) {
+    void Push(const Offset id) {
         slots_[horizon_] = id;
         horizon_ ++;
     }
 
   public:
-    void* slots_;
+    Offset* slots_;
 
   private:
     Offset size_;
@@ -76,18 +77,24 @@ class FREE_SLOT {
 
 }; // class FREE_SLOT
     
+enum OperationCode {
+    kDoNothing = 0,
+    kCoverInsert = 1,
+    kUncoverInsert = 2,
+    kDelete = 3
+};
 
 class INDEX {
   public:
     INDEX() {};
     ~INDEX();
 
-    Status Search(const Slice& key, Offset* off, Offset* len) {
-    Status Insert(const bool cover, const Slice& key, const Offset off, const Offset len) {
-    Status Del(const Slice& key) {
+    Status Search(const Slice& key, Offset* off, Offset* len);
+    Status Insert(const bool cover, const Slice& key, const Offset off, const Offset len);
+    Status Del(const Slice& key);
 
-    Status Load(const Configure& conf, const int index_head_size) {
-    Status Born(const Configure& conf, const int index_head_size) {
+    Status Load(CONFIGURE& conf, const int index_head_size);
+    Status Born(CONFIGURE& conf, const int index_head_size);
 
     Status Backward(); //FIXME only can back one step, may be we can use id_;
 
@@ -104,23 +111,25 @@ class INDEX {
 
     //Rollback
     char* rollback_item_;
-    OPERATION last_operation_;
+    OperationCode last_operation_;
 
     //buffer
     INDEX_ITEM_8 item_8_;
     INDEX_ITEM_16 item_16_;
 
   private:
-    Status Init(const Configure& conf, const int index_head_size);
+    Status Init(CONFIGURE& conf, const int index_head_size);
 
-    Offset BSTSearchId(const char* item);
-    Status BSTInsert(const bool cover, const char* item);
-    Status BSTDelete(const char* item);
+    Offset BSTSearchId(char* item);
+    Status BSTInsert(const bool cover, char* item);
+    Status BSTDelete(char* item);
 
     Offset* GetBSTRightNodePtr(const Offset node_id);
     Offset* GetBSTLeftNodePtr(const Offset node_id);
     Offset GetBSTRightNodeId(const Offset node_id);
     Offset GetBSTLeftNodeId(const Offset node_id);
+    void SetBSTRightNodeId(const Offset node_id, const Offset v);
+    void SetBSTLeftNodeId(const Offset node_id, const Offset v);
     int BSTNodeCmp(char *item, const Offset node_id);
 
     Offset GetHTId(char *item);

@@ -14,6 +14,7 @@ namespace kvs {
 Status CreateFile(const std::string pathname, int *fd);
 Status LoadFile(const std::string pathname, int *fd);
 Status WriteFile(const int fd, const Offset offset, const Slice& slice);
+Status WriteFile(const int fd, const Offset offset, const char* buf, const int len);
 Status ReadFile(const int fd, const Offset offset, char* buffer, const int length);
 Status GetFileLast(const int fd, Offset *offset);
 
