@@ -13,6 +13,11 @@ typedef long long Offset;
 const Offset OffsetFeb31 = 10000000+1806;
 const int STATUS_MSG_SIZE = 128;
 
+enum HealthCode {
+    kBorn = 0,
+    kBalance = 1
+};
+
 enum CodeType {
     kOk = 0,
     kNotExist = 1,

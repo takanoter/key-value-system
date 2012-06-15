@@ -16,7 +16,7 @@ Status SPACE::Load(CONFIGURE& data_conf) {
 
     std::string key_len;
     s = data_conf.Get("key_length", &key_len);
-    int key_length = key_len.toInt32();
+    int key_length = atoi(key_len.c_str());
     item_head_length_ = key_length + sizeof(Offset)*2;
     return s;
 }
@@ -28,7 +28,7 @@ Status SPACE::Born(CONFIGURE& data_conf) {
 
     std::string key_len;
     s = data_conf.Get("key_length", &key_len);
-    int key_length = key_len.toInt32();
+    int key_length = atoi(key_len.c_str());
     item_head_length_ = key_length + sizeof(Offset)*2;
     return s;
 }
@@ -36,8 +36,8 @@ Status SPACE::Born(CONFIGURE& data_conf) {
 Status SPACE::Read(const Offset offset, const Offset length, std::string* value) {
     Status s = ReadFile(fd_, offset, buffer_, length); 
     if (!s.ok()) return s;
-    /*FIXME*/
-    *value(buffer_[item_head_length_], length - item_head_length_);
+    /*FIXME copy?*/
+    value->assign(&buffer_[item_head_length_], length - item_head_length_);
     return s;
 }
 

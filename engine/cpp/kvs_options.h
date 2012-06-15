@@ -32,9 +32,9 @@ struct GetOptions {
 struct ArrangeOptions {
 //  const FilterPolicy* filter_policy;
 //  const TimeCondition* time_cond;
-  const double hole_horizon;
-  const bool is_check_data;
-  const bool persist; //if persist, arragne will do everytime. otherwise it will onle run once.
+  double hole_horizon;
+  bool is_check_data;
+  bool persist; //if persist, arragne will do everytime. otherwise it will onle run once.
 
   ArrangeOptions()
       : //filter_policy(NULL),
@@ -54,7 +54,7 @@ struct EngineOptions {
  // const FilterPolicy* filter_policy;
   double hole_horizon;
   std::string path;
-  unsigned int index_head_size;
+  int index_head_size;
   int key_length;
 
   EngineOptions();

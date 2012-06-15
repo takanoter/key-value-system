@@ -67,6 +67,10 @@ class FREE_SLOT {
         slots_[horizon_] = id;
         horizon_ ++;
     }
+    
+    Offset Horizon() {
+        return horizon_;
+    }
 
   public:
     Offset* slots_;
@@ -97,6 +101,8 @@ class INDEX {
     Status Born(CONFIGURE& conf, const int index_head_size);
 
     Status Backward(); //FIXME only can back one step, may be we can use id_;
+    Offset GetIndexFreeSlotHorizon();
+    Offset GetIndexHorizon();
 
   private:
     int key_len_;

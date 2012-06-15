@@ -9,6 +9,11 @@
 #define KVS_ENGINE_INCLUDE_HASH_ENGINE_H_
 
 #include "kvs_engine.h"
+#include "kvs_status.h"
+#include "configure.h"
+#include "index.h"
+#include "space.h"
+#include "arrange.h"
 
 namespace kvs {
 
@@ -18,7 +23,7 @@ class HashEngine : public ENGINE {
     virtual ~HashEngine();
 
     virtual Status Create(const EngineOptions& options, const std::string& name);
-    virtual Status Open(const EngineOptions& options);
+    virtual Status Open(EngineOptions& options);
     virtual Status Close();
 
     // Implementations of the Engine interface
@@ -41,32 +46,35 @@ class HashEngine : public ENGINE {
     Offset id_; /*FIXME max operation limit,  consistency control LOCK?*/
 	        /*FIXME this will released in User for multithread consideration*/
     int cur_data_file_;
-    Health health_;
+    HealthCode health_;
 
     //Functions
-    Arrange arrange_;
+    ArrangeOptions arrange_;
 
     //Configure
-    Configure conf_conf_; 
-    Configure meta_conf_; 
-    Configure data_conf_; 
+    CONFIGURE conf_conf_; 
+    CONFIGURE meta_conf_; 
+    CONFIGURE data_conf_; 
     //we seldom change conf file indeed. Only used for load and set_property+persist, never get_property.
     //because Configure is persist-layout, while specified item in HashEngine is a memory-structure.
 
     //both in soft-file
     //memory
-    Index index_; 
-    Space space_; //data_conf_ manager
+    INDEX index_; 
+    SPACE space_; //data_conf_ manager
 
   private:
-    Status ConfsBorn(const std::string path);
-    Status ConfsCheckLoad(const std::string path);
+    Status ConfsBorn(const std::string& path, const int hash_head_size);
+    Status ConfsCheckLoad(std::string& path);
     Status ConfsSolid();
-    Status FillMetaConfigure(Configure& meta);
-    Status FillConfConfigure(Configure& conf);
-    Status FillDataConfigure(Configure& data);
+    Status UpdateConfigure();
+
+    Status FillMetaConfigure(CONFIGURE& meta);
+    Status FillConfConfigure(CONFIGURE& conf, const int index_head_size);
+    Status FillDataConfigure(CONFIGURE& data);
+
     std::string GetEngineVersion() {
-        return "0.01"
+        return "0.01";
     }
 
 }; // class HashEngine

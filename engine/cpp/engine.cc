@@ -34,18 +34,20 @@ Status HashEngine::Create(const EngineOptions& opt, const std::string& name) {
     s = space_.Born(data_conf_);
     if (!s.ok()) return s;
 
-    health_.SetBorn();
+    health_ = kBorn;
     return s;
 }
 
-Status HashEngine::Open(const EngineOptions& opt) {
+Status HashEngine::Open(EngineOptions& opt) {
     Status s = ConfsCheckLoad(opt.path);
     if (!s.ok()) return s;
 
-    std::string index_head_size;
-    conf_conf_.Get("index_head_size", &index_head_size); 
+    char buf[32];
+    sprintf (buf, "%d", opt.index_head_size);
+    std::string v = buf;
+    conf_conf_.Set("index_head_size", v); 
 
-    s = index_.Load(meta_conf_, index_head_size.toInt());
+    s = index_.Load(meta_conf_, opt.index_head_size);
     if (!s.ok()) return s;
 
     s = space_.Load(data_conf_);
@@ -62,7 +64,6 @@ Status HashEngine::Close() {
 
 Status HashEngine::Put(const PutOptions& opt, const Slice& k, const Slice& v) {
     //id_++;
-    Offset len;
     Offset off = space_.GetSpace();  //no limit control, out of limit happed in writter.
     Offset len = space_.CalLength(k,v);
     Status s = index_.Insert(opt.cover, k, off, len);
@@ -78,7 +79,7 @@ rollback:
 
 Status HashEngine::Get(const GetOptions& opt, const Slice& k, std::string* v) {
     Offset off, len;
-    Status s = index_.search(k, &off, &len);
+    Status s = index_.Search(k, &off, &len);
     if (!s.ok()) return s;
     if (opt.only_check) return s;  //s.ok() == key is exist
     s = space_.Read(off, len, v);
@@ -136,7 +137,7 @@ Status HashEngine::CancelArrange() {
 }
 
 /************  private  **********************************************/
-Status HashEngine::ConfsBorn(const std::string path, const int index_head_size) {
+Status HashEngine::ConfsBorn(const std::string& path, const int index_head_size) {
     Status s;
     char filename[1024];
 
@@ -148,7 +149,7 @@ Status HashEngine::ConfsBorn(const std::string path, const int index_head_size) 
     if (!s.ok()) return s;
 
     snprintf(filename, 1024, "%s/%s", path.c_str(), "conf");
-    std::string conffile(filename);
+    std::string conffile = filename;
     s = conf_conf_.Create(conffile);
     if (!s.ok()) return s;
     s = FillConfConfigure(conf_conf_, index_head_size);
@@ -164,7 +165,7 @@ Status HashEngine::ConfsBorn(const std::string path, const int index_head_size) 
     return s;
 }
 
-Status HashEngine::ConfsCheckLoad(const std::string path) {
+Status HashEngine::ConfsCheckLoad(std::string& path) {
     Status s; 
     char filename[1024];
 
@@ -200,110 +201,130 @@ Status HashEngine::ConfsSolid() {
     return s;
 };
 
-Status HashEngine::FillDataConfigure(Configure& data) {
+Status HashEngine::FillDataConfigure(CONFIGURE& data) {
     Slice key;
     std::string value;
+    char buf[32];
+    memset(buf, 0, sizeof(buf));
 
-    key("version");
-    s = data.NewItem(key, cabinet_version_);
+    key.Set("version");
+    Status s = data.NewItem(key, cabinet_version_);
     if (!s.ok()) return s;
 
-    key("name");
+    key.Set("name");
     s = data.NewItem(key, cabinet_name_);
     if (!s.ok()) return s;
 
-    key("path");
+    key.Set("path");
     s = data.NewItem(key, fs_path_);
     if (!s.ok()) return s;
  
-    key("key_len");
-    value(key_length_);
+    key.Set("key_len");
+    sprintf(buf, "%d", key_length_);
+    value = buf;
     s = data.NewItem(key, value);
     if (!s.ok()) return s;
 
-    key("data");
+    key.Set("data");
     s = data.NewItem(key);
     if (!s.ok()) return s;
 
     return s;
 }
 
-Status HashEngine::FillConfConfigure(Configure& conf, const int index_head_size) {
+Status HashEngine::FillConfConfigure(CONFIGURE& conf, const int index_head_size) {
     Slice key;
     std::string value;
+    char buf[32];
+    memset(buf, 0, sizeof(buf));
 
-    key("version");
-    s = conf.NewItem(key, cabinet_version_);
+    key.Set("version");
+    Status s = conf.NewItem(key, cabinet_version_);
     if (!s.ok()) return s;
 
-    key("name");
+    key.Set("name");
     s = conf.NewItem(key, cabinet_name_);
     if (!s.ok()) return s;
 
-    key("path");
+    key.Set("path");
     s = conf.NewItem(key, fs_path_);
     if (!s.ok()) return s;
  
-    key("index_head_size");
-    value(index_head_size);
+    key.Set("index_head_size");
+    sprintf(buf, "%d", index_head_size);
+    value = buf;
     s = conf.NewItem(key, value);
     if (!s.ok()) return s;
 
     return s;
 }
 
-Status HashEngine::FillMetaConfigure(Configure& meta) {
+Status HashEngine::FillMetaConfigure(CONFIGURE& meta) {
     Slice key;
+    Status s;
     std::string value;
+    char buf[32];
 
-    key("version");
+    key.Set("version");
     s = meta.NewItem(key, cabinet_version_);
     if (!s.ok()) return s;
 
-    key("name");
+    key.Set("name");
     s = meta.NewItem(key, cabinet_name_);
     if (!s.ok()) return s;
 
-    key("key_length");
-    value(key_length_);
+    key.Set("key_length");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", key_length_);
+    value = buf;
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
 
     //dynamic, but static copy
-    key("id");
-    value(id_);
+    key.Set("id");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%lld", id_);
+    value = buf;
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
  
     //dynamic, but static copy
-    key("cur_data_file");
-    value(cur_data_file_);
+    key.Set("cur_data_file");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", cur_data_file_);
+    value = buf;
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
 
     //dynamic, but static copy
-    key("health");
-    value(health_.ToString());
+    key.Set("health");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", health_);
+    value = buf;
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
 
     //dynamic, but static copy
-    key("index_horizon");
-    value(0); 
+    key.Set("index_horizon");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", 0);
+    value = buf;
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
 
     //dynamic, but static copy
-    key("index_free_slot_horizon");
-    value(0); 
+    key.Set("index_free_slot_horizon");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", 0);
+    value = buf;
     s = meta.NewItem(key, value);
     if (!s.ok()) return s;
  
-    key("index_free_slot");
+    key.Set("index_free_slot");
     s = meta.NewItem(key, INDEX_FREE_SLOT_FIX_SIZE);
     if (!s.ok()) return s;
 
-    key("index");
+    key.Set("index");
     if (8 == key_length_) {
         s = meta.NewItem(key, INDEX_FIX_8_SIZE);
     } else if (16 == key_length_) {
@@ -318,29 +339,42 @@ Status HashEngine::FillMetaConfigure(Configure& meta) {
 
 Status HashEngine::UpdateConfigure() {
     Status s;
+    Slice key;
+    std::string value;
+    char buf[32];
     
-    key("id");
-    value(id_);
+    key.Set("id");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%lld", id_);
+    value = buf;
     s = meta_conf_.Set(key, value);
     if (!s.ok()) return s;
  
-    key("cur_data_file");
-    value(cur_data_file_);
+    key.Set("cur_data_file");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", cur_data_file_);
+    value = buf;
     s = meta_conf_.Set(key, value);
     if (!s.ok()) return s;
 
-    key("health");
-    value(health_.ToString());
+    key.Set("health");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%d", health_);
+    value = buf;
     s = meta_conf_.Set(key, value);
     if (!s.ok()) return s;
 
-    key("index_horizon");
-    value(index_.GetIndexHorizon());
+    key.Set("index_horizon");
+    memset(buf, 0, sizeof(buf));
+    sprintf(buf, "%lld", index_.GetIndexHorizon());
+    value = buf;
     s = meta_conf_.Set(key, value);
     if (!s.ok()) return s;
 
-    key("index_free_slot_horizon");
-    value(health_.GetIndexFreeSlotHorizon());
+    key.Set("index_free_slot_horizon");
+    memset(buf, 0, sizeof(buf));
+    sprintf (buf, "%lld", index_.GetIndexFreeSlotHorizon());
+    value = buf;
     s = meta_conf_.Set(key, value);
     if (!s.ok()) return s;
 

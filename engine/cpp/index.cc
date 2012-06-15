@@ -467,4 +467,12 @@ Offset* INDEX::GetBSTRightNodePtr(const Offset node_id) {
     return NULL;
 }
 
+Offset INDEX::GetIndexFreeSlotHorizon() {
+    return free_slots_.Horizon();
+}
+
+Offset INDEX::GetIndexHorizon() {
+    return item_horizon_;
+}
+
 };  // namespace kvs 
