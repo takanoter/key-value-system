@@ -219,7 +219,7 @@ Status HashEngine::FillDataConfigure(CONFIGURE& data) {
     s = data.NewItem(key, fs_path_);
     if (!s.ok()) return s;
  
-    key.Set("key_len");
+    key.Set("key_length");
     sprintf(buf, "%d", key_length_);
     value = buf;
     s = data.NewItem(key, value);

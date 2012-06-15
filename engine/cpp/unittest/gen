@@ -1,0 +1,4 @@
+#!/bin/sh
+rm ../*.o
+rm create_data_conf
+g++ -g ../posix.cc ../configure.cc ../kvs_slice.h ../kvs_status.cc create_data_conf.cc unit_func.cc -o create_data_conf

@@ -31,7 +31,11 @@ class Status {
   public:
     Status() : code_(kOk),
                msg_(NULL) { }
-    ~Status() { delete[] msg_; }
+    ~Status() {
+    /*FIXME:core*/
+    //delete []msg_;
+
+     }
 
     // Copy the specified status.
     Status(const Status& s);
@@ -40,7 +44,7 @@ class Status {
     // Return a success status.
     static Status OK() { return Status(); }
 
-    bool ok() const { return (msg_ == NULL); }
+    bool ok() const { return (code_ == kOk); }
     bool EndOfFile() const { return (code_ == kEndOfFile);}
 
     void SetNotExist();

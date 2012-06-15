@@ -43,8 +43,8 @@ class ITEM {
  
   public:
     ITEM_TYPE type;
-    Slice key;
-    Slice value;
+    std::string key;
+    std::string value; //需要存实际的值
     Offset len; //when len == OffsetFeb31, means it is meaningless & end of file.
     char *buf;
     int buf_size;

@@ -21,7 +21,7 @@ Status CONFIGURE::Get(const Slice& key, std::string* property) {
     if (it == items_.end()) {
         s.SetNotExist();
     } else {
-        item = items_[key.data()];
+        item = it->second;;
         *property = item.value.data();
     }
     return s;
@@ -35,15 +35,26 @@ Status CONFIGURE::Set(const Slice& key, const Slice& property) {
         s.SetNotExist();
     } else {
         ITEM item(key, property);
-        items_[key.data()]=item;
+        std::string k = key.data();
+        items_.erase(k);
+        items_.insert(ITEM_MAP::value_type(k, item));
+        need_solid_ = true;
     }
-    need_solid_ = true;
     return s;
 }
+/*
+    ITEM_MAP::iterator it;
+    it = items_.find(key.data());
+    if (items_.end() == it) return NULL;
+    return it->second.buf;
+    c++ std::map不是覆盖插入的。
+*/
 
 Status CONFIGURE::Set(const ITEM& item) {
     Status s;
-    items_[item.key.data()] = item;
+    std::string k = item.key.data();
+    items_.erase(k);
+    items_.insert(ITEM_MAP::value_type(k, item));
     need_solid_ = true;
     return s;
 }
@@ -53,33 +64,44 @@ Status CONFIGURE::NewItem(const Slice& key, const Offset len) {
     Status s;
     char* buf = (char*) malloc(len);
     ITEM item(key, len, buf, len);
-    items_[key.data()] = item;
+    std::string k = key.data();
+    items_.erase(k);
+    items_.insert(ITEM_MAP::value_type(k, item));
     return s;
 } 
 
 Status CONFIGURE::NewItem(const Slice& key) {
     Status s;
     ITEM item(key, OffsetFeb31, NULL, 0);
-    items_[key.data()] = item;
+    std::string k = key.data();
+    items_.erase(k);
+    items_.insert(ITEM_MAP::value_type(k, item));
     return s;
 }
 
 Status CONFIGURE::NewItem(const Slice& key, const Slice& value) {
-   Status s;
-   ITEM item(key, value);
-   items_[key.data()] = item; 
-   return s;
+    Status s;
+    ITEM item(key, value);
+    std::string k = key.data();
+    items_.erase(k);
+    items_.insert(ITEM_MAP::value_type(k, item)); 
+    return s;
 }
 
 Status CONFIGURE::NewItem(const ITEM& item)
 {
-   Status s;
-   items_[item.key.data()] = item;
-   return s;
+    Status s;
+    std::string k = item.key.data(); 
+    items_.erase(k);
+    items_.insert(ITEM_MAP::value_type(k, item)); 
+    return s;
 }
 
 char* CONFIGURE::GetBuffer(const Slice& key) {
-    return items_[key.data()].buf;
+    ITEM_MAP::iterator it;
+    it = items_.find(key.data());
+    if (items_.end() == it) return NULL;
+    return it->second.buf;
 }
 
 
@@ -105,8 +127,9 @@ Status CONFIGURE::Solid() {
                 } else {
                     black_items.push_back(item);
                 }
+            } else {
+                s = AppendItem(it->second, &off);
             }
-            s = AppendItem(it->second, &off);
         }
 
         std::list<ITEM>::iterator iter;
