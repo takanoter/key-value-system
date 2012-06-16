@@ -14,7 +14,7 @@
 
 namespace kvs {
 
-const int SPACE_BUFFER_SIZE = 10*1024*1024;
+const int SPACE_BUFFER_SIZE = 10*1024;
 class SPACE {
   public:
     SPACE()  {

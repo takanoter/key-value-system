@@ -57,7 +57,7 @@ void Status::SetIOError(int error_ret) {
     }
     sprintf(msg_, "error_no:%d", error_ret);
 */
-    code_ = kOk;
+    code_ = kIOError;
 }
 
 char* Status::CopyState(const char* state) {
