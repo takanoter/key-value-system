@@ -202,6 +202,13 @@ Status CONFIGURE::Load(const std::string& pathname) {
     return s;
 }
 
+Status Reborn(CONFIGURE& base_conf) {
+    Status s;
+    name_ = base_conf.GetName();
+    items_ = base_conf.GetItems(); 
+    return s;
+}
+
 Status CONFIGURE::Create(const std::string& pathname) {
    name_ = pathname;
    Status s = CreateFile(pathname, &fd_);

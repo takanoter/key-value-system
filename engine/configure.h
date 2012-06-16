@@ -38,6 +38,7 @@ class CONFIGURE {
     Status Create(const std::string& pathname);
     Status FetchLastOffset(Offset *off);
     int const GetFD();
+    Status Reborn(CONFIGURE& base_conf);
 
   private:
     ITEM_MAP items_;

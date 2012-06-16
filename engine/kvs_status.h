@@ -15,7 +15,9 @@ const int STATUS_MSG_SIZE = 128;
 
 enum HealthCode {
     kBorn = 0,
-    kBalance = 1
+    kBalance = 1,
+    kArrange = 2,
+    kJump = 3
 };
 
 enum CodeType {
