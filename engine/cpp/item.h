@@ -73,6 +73,32 @@ class ITEM {
         buf_size = 0;
     }
 
+    void Parse(char* buffer, int buffer_size) {
+        int i;
+        for (i=0; i<buffer_size; i++) {
+            if (':' == buffer[i]) break;
+        }
+        if (i==buffer_size) {
+            //black item
+            BLACK_ITEM *black_item = (BLACK_ITEM*) buffer;
+            Offset length = black_item->length;
+            char* buffer = NULL;
+            type = black;
+            key = black_item->name;
+            len = length;
+            buf = buffer;
+            buf_size = buffer_size;
+        } else {
+            //visual item
+            type = visual; 
+            key.assign(buffer, i);
+            value.assign(&buffer[i+1]);
+            len = 0;
+            buf = NULL;
+            buf_size = buffer_size;
+        }
+    }
+
     ITEM(char* buffer, int buffer_size) {
         int i;
         for (i=0; i<buffer_size; i++) {
@@ -131,7 +157,8 @@ class ITEM {
     }
 
     bool Fit(const char* item_head, const int head_size) {
-        if (strncmp(key.data(), item_head, key.size()) == 0) {
+        /*FIXME*/
+        if (strcmp(key.data(), item_head) == 0) {
             return true;
         }
         return false;

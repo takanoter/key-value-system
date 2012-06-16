@@ -15,6 +15,7 @@ int main()
         printf ("test 1 failed.\n");
         return -1;
     }
+    printf ("create test success.\n");
 
     if (load()!=0) {
         printf ("test 2 failed.\n");
@@ -58,7 +59,11 @@ int create()
         printf ("update meta configure failed.\n");
         return -1;
     }
-    meta_conf.Solid();
+    s = meta_conf.Solid();
+    if (!s.ok()) {
+        printf ("Solid failed.\n");
+        return -1;
+    }
     return 0;
 }
 
@@ -73,6 +78,7 @@ int load()
     int index_head_size = 20;
     s = index.Load(meta_conf, index_head_size);
     if (!s.ok()) return -1;
+    printf ("here2\n");
 
 
     Slice key;

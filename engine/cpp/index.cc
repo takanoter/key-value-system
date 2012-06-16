@@ -18,12 +18,15 @@ Status INDEX::Load(CONFIGURE& conf, const int index_head_size) {
     Status s = Init(conf, index_head_size);
     if (!s.ok()) return s;
 
-    for (int i=0; i<item_horizon_; i++) {
+    Offset before_item_horizon = item_horizon_;
+    item_horizon_ = 0;
+    for (int i=0; i<before_item_horizon; i++) {
         char* item = GetItemFromBSTNode(i);
         if (NULL == item) continue;
         s = BSTInsert(true, item);
         if (!s.ok()) return s;
     }
+    item_horizon_ = before_item_horizon;
     return s;
 }
 

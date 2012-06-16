@@ -58,6 +58,7 @@ class CONFIGURE {
     void   NextOffset(const ITEM& item, Offset *offset);
     Status FetchItemBuffer(const Offset off);
     Status SearchItemOffset(ITEM& item, Offset* offset);
+    ITEM_MAP::iterator ITEM_MAP_FIND(ITEM_MAP& items_map, std::string& key);
 //    Status GetItemOffsetBlack(const Slice& key, Offset* offset); 
 }; // class CONFIGURE
 
