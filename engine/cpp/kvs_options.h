@@ -59,7 +59,7 @@ struct EngineOptions {
 
   EngineOptions()
       : hole_horizon(50.0),
-        path("my_data"),
+        path("data"),
         index_head_size(1024),
         key_length(8) {
   }
