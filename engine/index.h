@@ -1,59 +1,159 @@
+/*************************************************************************
+    > File Name: index.h
+    > Author: takanoter@gmail.com
+*/
+#ifndef KVS_ENGINE_INCLUDE_INDEX_H_
+#define KVS_ENGINE_INCLUDE_INDEX_H_
+
 #include <stdio.h>
-#include "kvs_utils.h"
+#include "kvs_status.h"
+#include "kvs_options.h"
+#include "kvs_slice.h"
+#include "configure.h"
 
-/* These info will persist */
-typedef struct INDEX_HEAD_LAYOUT {
-    int magic_num;
-	int version;
-	unsigned long long cur_kv_count;
-	unsigned long long node_pool_size;
-    unsigned long long node_pool_horizon;
-	unsigned long long hash_head; /* hash_head slot count */
+namespace kvs {
 
-	unsigned long long free_node_pool_size;
-    unsigned long long free_node_count;
+/* {key,length, offset, tree} */
+/*FIXME: template*/
+const int INDEX_ITEM_8_SIZE = 8/*key*/+4/*length*/+8/*offset*/+8*2/*tree*/;
+const int INDEX_ITEM_16_SIZE = 16/*key*/+4/*length*/+8/*offset*/+8*2/*tree*/;
+const int INDEX_ITEM_NUM = 1024; /*1024*1024*10*/
+const Offset INDEX_FREE_SLOT_FIX_NUM = 1024; /*1024*1024*/
+const Offset INDEX_FREE_SLOT_FIX_SIZE = INDEX_FREE_SLOT_FIX_NUM * sizeof(Offset);
+const Offset INDEX_FIX_8_SIZE = INDEX_ITEM_NUM * INDEX_ITEM_8_SIZE;
+const Offset INDEX_FIX_16_SIZE = INDEX_ITEM_NUM * INDEX_ITEM_16_SIZE;
 
-    unsigned long long timestamp;
-	
-	/*node_pool;*/
-	/*hash_head;*/
-	/*free_node_pool;*/
-} INDEX_HEAD_LAYOUT;
+struct INDEX_ITEM_8 {
+    Offset key;
+    int length;
+    Offset offset;
+    Offset left,right;
+};
 
-typedef struct IDX_NODE {
-    unsigned long long key_sign;
-    unsigned long long value_offset;
-    unsigned long long left_id;
-    unsigned long long right_id;
-} IDX_NODE;
+struct INDEX_ITEM_16 {
+    Offset key[2];
+    int length;
+    Offset offset;
+    Offset left,right;
+};
+/***
+ItemCmp
+ItemFill
+ItemMove
+*/
 
-typedef struct INDEX {
-    int fd;
-	int is_change;
-    int cur_kv_count;
+class FREE_SLOT {
+  public:
+    FREE_SLOT() {
+    };
 
-	unsigned long long hashhead_size;
-	unsigned long long* hash_head;
+    ~FREE_SLOT() {
+    };
+   
+    void Fill(char* buf, const Offset size, const Offset horizon) {
+        slots_ = (Offset*)buf;
+        size_ = size;
+        horizon_ = horizon;
+    }
 
-	/*this is max_key_num*/
-	unsigned long long node_pool_size; 
-    unsigned long long node_pool_horizon;
-	IDX_NODE* node_pool;
+    Offset Pop() {
+        Offset id = slots_[horizon_];
+        if (0 == horizon_) return OffsetFeb31;
+        horizon_--;
+        return id;
+    }
 
-    unsigned long long free_node_pool_size;
-	unsigned long long free_node_count;
-	unsigned long long* free_node_pool;
+    void Push(const Offset id) {
+        slots_[horizon_] = id;
+        horizon_ ++;
+    }
+    
+    Offset Horizon() {
+        return horizon_;
+    }
 
-    unsigned long long timestamp;
-} INDEX;
+  public:
+    Offset* slots_;
+
+  private:
+    Offset size_;
+    Offset horizon_;
+
+}; // class FREE_SLOT
+    
+enum OperationCode {
+    kDoNothing = 0,
+    kCoverInsert = 1,
+    kUncoverInsert = 2,
+    kDelete = 3
+};
+
+class INDEX {
+  public:
+    INDEX() {
+
+    };
+    ~INDEX();
+
+    Status Search(const Slice& key, Offset* off, Offset* len);
+    Status Insert(const bool cover, const Slice& key, const Offset off, const Offset len);
+    Status Del(const Slice& key);
+
+    Status Load(CONFIGURE& conf, const int index_head_size);
+    Status Born(CONFIGURE& conf, const int index_head_size);
+
+    //Status Backward(); //FIXME only can back one step, may be we can use id_;
+    Offset GetIndexFreeSlotHorizon();
+    Offset GetIndexHorizon();
+
+  private:
+    int key_len_;
+
+    char* item_; //real index items
+    Offset* hash_head_; //hash head
+    int item_num_; //use default: INDEX_ITEM_NUM
+    int hash_head_size_;
+    Offset item_horizon_;
+
+    FREE_SLOT free_slots_; //free slot
+
+    //Rollback
+    char* rollback_item_;
+    OperationCode last_operation_;
+
+    //buffer
+    INDEX_ITEM_8 item_8_;
+    INDEX_ITEM_16 item_16_;
+
+  private:
+    Status Init(CONFIGURE& conf, const int index_head_size);
+
+    Offset BSTSearchId(char* item);
+    Status BSTInsert(const bool cover, char* item);
+    Status BSTDelete(char* item);
+
+    Offset* GetBSTRightNodePtr(const Offset node_id);
+    Offset* GetBSTLeftNodePtr(const Offset node_id);
+    Offset GetBSTRightNodeId(const Offset node_id);
+    Offset GetBSTLeftNodeId(const Offset node_id);
+    void SetBSTRightNodeId(const Offset node_id, const Offset v);
+    void SetBSTLeftNodeId(const Offset node_id, const Offset v);
+    int BSTNodeCmp(char *item, const Offset node_id);
+
+    Offset GetHTId(char *item);
+    Offset GetNodeLength(const Offset node_id);
+    Offset GetNodeOffset(const Offset node_id);
+
+    char* FillItem(const Slice& key);
+    char* FillItem(const Slice& key, const Offset offset, const Offset length);
+    void FillNewNode(const Offset node_id, char *item);
+    char* GetItemFromBSTNode(const Offset node);
+
+    void PushFreeNode(const Offset node_id);
+    Offset PopFreeNode();
+
+}; // class INDEX
 
 
-
-INDEX* idx_create(const char *filename, unsigned long long key_num);
-INDEX* idx_load(const char *filename);
-int idx_exit(INDEX *index);
-int idx_sync(INDEX* index);
-
-int idx_insert(INDEX* idx, const IDX_NODE* node, unsigned long long timestamp);
-int idx_delete(INDEX* idx, IDX_NODE* node, unsigned long long timestamp);
-int idx_search(INDEX* idx, IDX_NODE* node);
+}; // namespace kvs
+#endif // KVS_ENGINE_INCLUDE_INDEX_H_
