@@ -24,6 +24,7 @@ Status CONFIGURE::Get(const Slice& key, std::string* property) {
     } else {
         item = it->second;;
         *property = item.value.data();
+        //printf ("trace: key(%s), value(%s)\n", key.data(), property->c_str());
     }
     return s;
 }
@@ -43,6 +44,7 @@ Status CONFIGURE::Set(const Slice& key, const Slice& property) {
     }
     return s;
 }
+
 /*
     ITEM_MAP::iterator it;
     it = items_.find(key.data());
@@ -202,10 +204,19 @@ Status CONFIGURE::Load(const std::string& pathname) {
     return s;
 }
 
-Status Reborn(CONFIGURE& base_conf) {
+Status CONFIGURE::Reborn(CONFIGURE& new_conf) {
     Status s;
-    name_ = base_conf.GetName();
-    items_ = base_conf.GetItems(); 
+    new_conf.name_ = name_ ;
+
+    std::string key;
+    ITEM value;
+    ITEM_MAP::iterator it = items_.begin();
+    for ( ; it!=items_.end(); it++) {
+        key = it->first;
+        value = it->second;
+        new_conf.items_.insert(ITEM_MAP::value_type(key, value)); 
+    }
+
     return s;
 }
 

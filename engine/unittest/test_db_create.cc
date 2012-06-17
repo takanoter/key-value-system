@@ -49,9 +49,15 @@ void load(HashEngine & db) {
         std::string value;
         key.Set((const char*)&long_keys[i], sizeof(long));
         s = db.Get(get_opt, key, &value);
-        if (!s.ok()) { printf ("oh get failed.\n"); return; }
+        if (!s.ok()) { printf ("oh get failed.\n"); /*return; */}
         printf ("[%d] %ld:%s\n", i, long_keys[i], value.c_str());
     }
+
+    key.Set((const char*)&long_keys[1], sizeof(long));
+    memset(buffer, 0, sizeof(buffer));
+    s = db.Delete(key);
+    if  (!s.ok()) { printf ("oh del failed.\n"); return; }
+    
 
     return ;
 }

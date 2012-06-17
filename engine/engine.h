@@ -13,7 +13,7 @@
 #include "configure.h"
 #include "index.h"
 #include "space.h"
-#include "arrange.h"
+//#include "arrange.h"
 
 namespace kvs {
 
@@ -73,6 +73,7 @@ class HashEngine /*: public ENGINE */{
     Status FillConfConfigure(CONFIGURE& conf, const int index_head_size);
     Status FillDataConfigure(CONFIGURE& data);
 
+    Status ArrangeScan(INDEX& base_index, SPACE& base_space ,INDEX& dest_index, SPACE& dest_space);
     std::string GetEngineVersion() {
         return "0.01";
     }

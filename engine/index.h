@@ -106,13 +106,16 @@ class INDEX {
     Offset GetIndexFreeSlotHorizon();
     Offset GetIndexHorizon();
 
+  public:
+    int hash_head_size_;
+
   private:
     int key_len_;
 
     char* item_; //real index items
     Offset* hash_head_; //hash head
     int item_num_; //use default: INDEX_ITEM_NUM
-    int hash_head_size_;
+ 
     Offset item_horizon_;
 
     FREE_SLOT free_slots_; //free slot

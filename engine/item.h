@@ -92,7 +92,12 @@ class ITEM {
             //visual item
             type = visual; 
             key.assign(buffer, i);
-            value.assign(&buffer[i+1]);
+            if ('\n' == buffer[i+1+strlen(&buffer[i+1]) - 1]) {
+                buffer[i+1+strlen(&buffer[i+1]) - 1] = 0;
+            }
+            value.assign(&buffer[i+1]);//-1 for "\n"
+
+            //printf ("trace wuhaha: key(%s),value(%s)\n", key.c_str(), value.c_str());
             len = 0;
             buf = NULL;
             buf_size = buffer_size;
@@ -122,6 +127,9 @@ class ITEM {
             //visual item
             type = visual; 
             key.assign(buffer, i);
+            if ('\n' == buffer[i+1+strlen(&buffer[i+1]) - 1]) {
+                buffer[i+1+strlen(&buffer[i+1]) - 1] = 0;
+            }
             value.assign(&buffer[i+1]);
             len = 0;
             buf = NULL;

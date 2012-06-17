@@ -65,6 +65,40 @@ Offset SPACE::CalLength(const Slice& key, const Slice& value) {
     return sizeof(Offset)/*id*/ + key.size() + sizeof(Offset)/*value.size()*/ + value.size();
 }
 
+Offset SPACE::CalHeadLength(const Offset key_length) {
+    return sizeof(Offset)/*id*/ + key_length + sizeof(Offset)/*value.size()*/;
+}
+
+Offset SPACE::CalLength(const Offset key_length, const Offset value_size) {
+    return sizeof(Offset)/*id*/ + key_length + sizeof(Offset)/*value.size()*/ + value_size;
+}
+
+/*key,value use std::string not slice.*/
+Status SPACE::Read(const Offset base_off, const Offset key_len, std::string *key, std::string* value, Offset* total_len) {
+    assert((key_len==8) || (key_len==16));
+    std::string v;
+    Offset head_len = CalHeadLength(key_len);
+    Status s = ReadFile(fd_, base_off, buffer_, head_len);
+    if (!s.ok()) return s;
+
+    Offset value_size;
+    if (8 == key_len) {
+        SPACE_HEAD_8* space_head_8 = (SPACE_HEAD_8*)buffer_;
+        key->assign((char*)&(space_head_8->key), 8);
+        value_size = space_head_8->value_len;
+    } else if (16 == key_len) {
+        SPACE_HEAD_16* space_head_16 = (SPACE_HEAD_16*)buffer_;
+        key->assign((char*)&(space_head_16->key), 16);
+        value_size = space_head_16->value_len;
+    }
+
+    *total_len = CalLength(key_len, value_size);
+    s = Read(base_off, *total_len, value);
+    if (!s.ok()) return s;
+
+    return s;
+}
+
 Offset SPACE::GetSpace() {
     return last_offset_;
 }

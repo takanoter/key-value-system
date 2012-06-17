@@ -40,9 +40,10 @@ class CONFIGURE {
     int const GetFD();
     Status Reborn(CONFIGURE& base_conf);
 
-  private:
+  public:
     ITEM_MAP items_;
     std::string name_;
+  private:
     Offset last_offset_;
     bool need_solid_;
     bool blank_;

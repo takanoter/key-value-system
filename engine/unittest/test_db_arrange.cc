@@ -31,10 +31,15 @@ void get(HashEngine& db) {
         std::string value;
         key.Set((const char*)&long_keys[i], sizeof(long));
         s = db.Get(get_opt, key, &value);
-        if (!s.ok()) { printf ("oh get failed.\n"); /*return;*/ }
+        if (!s.ok()) { printf ("oh get failed.\n"); /*return; */}
         printf ("[%d] %ld:%s\n", i, long_keys[i], value.c_str());
     }
 
+    ArrangeOptions arrange_opt;
+    s = db.Arrange(arrange_opt);
+    if (!s.ok()) {
+        printf ("arrange failed.\n");
+    }
     return;
 }
 

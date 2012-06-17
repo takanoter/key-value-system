@@ -8,5 +8,6 @@ rm test_space
 #g++ -g ../posix.cc ../configure.cc ../kvs_slice.h ../kvs_status.cc create_data_conf.cc unit_func.cc -o create_data_conf
 #g++ -g ../posix.cc ../index.cc ../configure.cc ../kvs_slice.h ../kvs_status.cc test_index.cc unit_func.cc -o test_index
 #g++ -g ../posix.cc ../space.cc ../configure.cc ../kvs_slice.h ../kvs_status.cc test_space.cc unit_func.cc -o test_space
-g++ -g ../*.cc ../kvs_slice.h test_db_create.cc -o test_db_create
 g++ -g ../*.cc ../kvs_slice.h test_db_load.cc -o test_db_load
+g++ -g ../*.cc ../kvs_slice.h test_db_arrange.cc -o test_db_arrange
+g++ -g ../*.cc ../kvs_slice.h test_db_create.cc -o test_db_create
