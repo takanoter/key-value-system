@@ -17,32 +17,35 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
+#include "jobs.h"
 #include "worker.h"
-typedef struct KV_SERVER_T {
-    int backlog;
-    int epool_queue_size;
-    struct epoll_event *events;
 
-    JOBS jobs;
-    int job_queue_size;
+namespace kvs {
 
-    int fresh_msec;
+class SERVER {
+  public:
+    SERVER() {};
+    ~SERVER() {};
+    int Run();
+    bool AddWorker(WORKER* worker);
+    bool Init(int backlog, int epoll_queue_size, int listen_port);
 
-    int worker_thread_num;
-    WORKER_FUNC worker_thread_func;
-    pthread_t *worker_thread_id;
+  private:
+    int backlog_;
+    int listen_port_;
+    int epoll_queue_size_;
+    struct epoll_event *events_;
     
-    int listen_port;
-} KV_SERVER;
+    std::list <WORKER*> workers_; 
+  
+  private:
+    int deal_accept(int listen_fd);
+    int deal_listen(int port, int backlog);
+    void setnonblocking(int fd);
+    void deal_with_fd(int conn_sock);
 
-int server_run(KV_SERVER* server);
+}; //class SERVER
 
-int server_set_queue_size(KV_SERVER* server, const int backlog, const int epool_queue_size, const int job_queue_size);
-
-int server_set_thread(KV_SERVER* server, const int worker_thread_num, WORKER_FUNC worker_thread_func);
-
-int server_set_timeout(KV_SERVER* server, const int fresh_msec);
-
-int server_set_port(KV_SERVER* server, const int listen_port);
-
+}; //namespace kvs
 #endif
+

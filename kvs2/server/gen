@@ -1,3 +1,5 @@
 #!/bin/sh
-gcc *.c -lpthread -o output/server
+rm *.o server
+gcc *.cc -lpthread -o server
+
 

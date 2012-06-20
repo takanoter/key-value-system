@@ -5,11 +5,13 @@
 #include <assert.h>
 
 #include "server.h"
-//#include "worker.h"
+#include "worker.h"
 
-int kvs_work(int fd)
+int kvs_work(int fd, char* buf, int buf_size)
 {
     char buffer[1024];
+    buf = buf;
+    buf_size = buf_size;
     printf ("here do application kvs job with fd:%d.\n", fd);
     memset(buffer, 0, sizeof(buffer));
     read(fd, buffer, sizeof(buffer));
@@ -21,12 +23,15 @@ int kvs_work(int fd)
 int main()
 {
     int ret = 0;
-    KV_SERVER server;
-    ret = server_set_queue_size(&server, 100, 100, 100);
-    ret = server_set_thread(&server, 10, kvs_work);
-    ret = server_set_timeout(&server, 1000);
-    ret = server_set_port(&server, 38000);
-    ret = server_run(&server);
+    char worker_name[1024];
+    strcpy(worker_name, "xiaoming"); /*FIXME:need memset 0?*/
+    kvs::SERVER server;
+    server.Init(100, 100, 8086);  
+    
+    kvs::WORKER worker;
+    worker.Init(100, kvs_work, worker_name, 200, NULL);
+    server.AddWorker(&worker);
+    server.Run();
     printf ("why not block?\n");
     return 0;
 }

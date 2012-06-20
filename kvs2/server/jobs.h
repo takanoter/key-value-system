@@ -3,34 +3,59 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+#include <string>
+#include <list>
 
 #include <pthread.h>
 
+namespace kvs {
+typedef struct JOB_INFO
+{
+    int fd;
+    char *buf;
+    int buf_size;
+    JOB_INFO() {
+        fd = -1;
+        buf = NULL;
+        buf_size = 0;
+    }
+}JOB_INFO;
+
 typedef struct JOB
 {
-    int is_used;
-    int fd;
-    int timeout;
+    bool is_used;
+    JOB_INFO job_info;
+    long long start_time_point;
+//inline void Status::operator=(const Status& s) {
+
+    void operator = (JOB const& job) {
+        is_used = job.is_used;
+        job_info = job.job_info;
+        start_time_point = job.start_time_point;
+    }
+    JOB() {};
 }JOB;
 
-typedef struct JOBS
+typedef std::list<JOB> JOB_LIST;
+class JOBS
 {
-    int size;
-    JOB* jobs;
-    int timeout;
-    pthread_mutex_t *lock;
-    DENY_CALLBACK deny;
-    DENY_STATE deny;
-    Pthread_cond_t *deny_cond
-}JOBS;
+  public:
+    JOBS(){};
+    ~JOBS(){
+        jobs_.clear();
+        pthread_mutex_destroy(lock_);
+    };    
 
-int jobs_fetch(JOBS* jobs);
+    JOB_INFO fetch();
+    bool inject(int fd, char* buf, int buf_size);
 
-int jobs_push(JOBS* jobs, int fd);
+    bool init(const int job_queue_size, long long timeout) ;
 
-int jobs_init(JOBS *jobs, const int job_quue_size);
+  private:
+    JOB_LIST jobs_;
+    long long timeout_;
+    pthread_mutex_t *lock_;
+}; //class JOBS;
 
-int jobs_destroy(JOBS *jobs);
-
+}; //namespace kvs
 #endif

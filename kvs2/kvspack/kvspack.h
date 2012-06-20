@@ -1,24 +1,26 @@
+#ifndef VALUE_TYPE_INT
 #define VALUE_TYPE_INT  1
 
-typedef struct KVS_PACK {
-    int *send_length;
-    int buf_size;
-    char *buf; 
-} KVS_PACK;
+namespace kvs {
 
-KVS_PACK * kvsp_create(void* buf, int buf_len);
+const int KVS_PACK_HEAD_SIZE = sizeof(int);
+class PACK {
+  public:
+    PACK() {};
+    ~PACK() {};
+    bool Load(char* buf, int buf_size);
+    bool Init(char* buf, int buf_size);
+    int Put(char* name, int name_len, int type, char* value, int value_len);
+    int Get(char* name, int name_len, int *type, char **value, int *value_len);
+    char* GetBuf();
+    int GetSendLength();
+    void Check();
 
-KVS_PACK * kvsp_load(void* buf, int buf_size);
+  private:
+    int *send_length_;
+    int buf_size_;
+    char *buf_; 
+}; // class PACK;
 
-int kvsp_destroy(struct KVS_PACK* pack);
-
-int kvsp_put(KVS_PACK* pack, void* name, int name_len, int type, void* value, int value_len);
-
-int kvsp_get(KVS_PACK* pack, const void* name, int name_len, int* type, void** value, int *value_len);
-
-void* kvsp_getbuf(KVS_PACK* pack);
-
-int kvsp_get_sendlen(KVS_PACK* pack);
-
-void kvsp_check(KVS_PACK *pack);
-
+}; //namespace kvs
+#endif

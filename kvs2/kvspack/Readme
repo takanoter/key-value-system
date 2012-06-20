@@ -1,0 +1,7 @@
+kvspack: a simple pack
+DON'T add quick_fetcher, use two kvspack:
+1. quick fetch pack: total_length, {table/worker_name}, {total_length}
+2. kv pack: total_length, {k}, {v}
+
+  send_length, {item_head, key, value} 
+

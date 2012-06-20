@@ -1,15 +1,1 @@
-an ugly server using epool looking like Event-DrivenServer but actually...
-process:non real-time model, no async interface, no stream interface
-
-L1:epoll queue [     ]
-L2:job queue [    ]
-L3:fetch worker-thread []  thread_func_callback
-
-
-gola ? : DenyOfService in L1 when L1 || L2 || L3 .. temporary leak of source.
-
-
-1.Event
-2.TimedOut Queue from fb.folly.
-
-
+...
