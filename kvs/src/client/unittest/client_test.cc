@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "client.h"
+#include "../client.h"
 
 int main(int argc, char **argv)
 {
@@ -18,7 +18,7 @@ int main(int argc, char **argv)
     sprintf(send_buffer, "%s", argv[1]);
     printf ("send buffer:[%s]\n", send_buffer);
 
-    fd = connect_to_server("127.0.0.1", 38000);
+    fd = connect_to_server("127.0.0.1", 18086);
 
     send_message_to_server(fd, send_buffer, strlen(send_buffer)+1); 
 

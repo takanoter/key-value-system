@@ -1,5 +1,0 @@
-#!/bin/sh
-rm *.o server
-gcc *.cc -lpthread -o server
-
-

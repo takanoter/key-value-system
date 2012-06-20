@@ -16,6 +16,7 @@ int kvs_work(int fd, char* buf, int buf_size)
     memset(buffer, 0, sizeof(buffer));
     read(fd, buffer, sizeof(buffer));
     printf ("receive buffer:[%s]\n", buffer);
+    sleep(15);
     printf ("now ok.\n");
     return 0;
 }
@@ -26,10 +27,10 @@ int main()
     char worker_name[1024];
     strcpy(worker_name, "xiaoming"); /*FIXME:need memset 0?*/
     kvs::SERVER server;
-    server.Init(100, 100, 8086);  
+    server.Init(100, 100, 18086);  
     
     kvs::WORKER worker;
-    worker.Init(100, kvs_work, worker_name, 200, NULL);
+    worker.Init(100, kvs_work, worker_name, 1, NULL);
     server.AddWorker(&worker);
     server.Run();
     printf ("why not block?\n");

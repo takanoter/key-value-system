@@ -1,0 +1,5 @@
+#!/bin/sh
+rm server client *.o data/*
+g++ -o server kvs_server.cc  src/engine/*.cc src/server/*.cc -lpthread -lstdc++
+g++ -o client kvs_client.cc  src/client/*.cc  -lpthread -lstdc++
+

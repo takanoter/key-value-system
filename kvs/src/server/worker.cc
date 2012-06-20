@@ -16,9 +16,11 @@ void *worker_loop(void *arg)
     while (1) {
         JOB_INFO job_info = worker->jobs_.fetch();
         if (-1 == job_info.fd) {
+            printf ("haha no job to do.\n");
             sleep(1); /*FIXME*/
             continue;
         }
+        printf ("job come.\n");
         ret = worker->Run(job_info);
         close(job_info.fd);
         free(job_info.buf);

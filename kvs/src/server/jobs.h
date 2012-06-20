@@ -6,6 +6,7 @@
 #include <string>
 #include <list>
 
+
 #include <pthread.h>
 
 namespace kvs {
@@ -23,13 +24,13 @@ typedef struct JOB_INFO
 
 typedef struct JOB
 {
-    bool is_used;
+    bool used;
     JOB_INFO job_info;
     long long start_time_point;
 //inline void Status::operator=(const Status& s) {
 
     void operator = (JOB const& job) {
-        is_used = job.is_used;
+        used = job.used;
         job_info = job.job_info;
         start_time_point = job.start_time_point;
     }
