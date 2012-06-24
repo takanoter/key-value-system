@@ -50,27 +50,10 @@ class FREE_SLOT {
     ~FREE_SLOT() {
     };
    
-    void Fill(char* buf, const Offset size, const Offset horizon) {
-        slots_ = (Offset*)buf;
-        size_ = size;
-        horizon_ = horizon;
-    }
-
-    Offset Pop() {
-        Offset id = slots_[horizon_];
-        if (0 == horizon_) return OffsetFeb31;
-        horizon_--;
-        return id;
-    }
-
-    void Push(const Offset id) {
-        slots_[horizon_] = id;
-        horizon_ ++;
-    }
-    
-    Offset Horizon() {
-        return horizon_;
-    }
+    void Fill(char* buf, const Offset size, const Offset horizon);
+    Offset Pop() ;
+    void Push(const Offset id);
+    Offset Horizon() ;
 
   public:
     Offset* slots_;
